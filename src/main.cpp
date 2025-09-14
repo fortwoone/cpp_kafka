@@ -1,27 +1,4 @@
-#include <cstdint>
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-#include <netdb.h>
-#include <string>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-
-using std::cerr;
-using std::cout;
-using std::endl;
-using std::unitbuf;
-
-#define host_to_network_long(val) htonl(val)
-
-using fint = int32_t;
-using uint = uint32_t;
-
-using InternetSockAddr = struct sockaddr_in;
-using SockAddr = struct sockaddr;
-using SockAddrPtr = struct sockaddr*;
+#include "utils.hpp"
 
 
 int main(int argc, char* argv[]) {
@@ -72,13 +49,29 @@ int main(int argc, char* argv[]) {
     int client_fd = accept(server_fd, reinterpret_cast<SockAddrPtr>(&client_addr), &client_addr_len);
     cout << "Client connected\n";
 
-    fint msg_size = host_to_network_long(0);
-    fint corr_id = host_to_network_long(7);
-    write(client_fd, &msg_size, sizeof(msg_size));
-    write(client_fd, &corr_id, sizeof(corr_id));
+    // Read request
+    char buffer[1024];
+    ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer), 0);
+    if (bytes_read <= 0){
+        cerr << "Couldn't read request, or client disconnected\n";
+        close(client_fd);
+        close(server_fd);
+        return 1;
+    }
+
+    // Prepare response
+    fint msg_size, correlation_id;
+
+    // Extract correlation ID from the buffer.
+    memcpy(&correlation_id, buffer + 8, sizeof(correlation_id));
+    // Generate message size
+    msg_size = host_to_network_long(sizeof(correlation_id));
+
+    // Send response
+    send(client_fd, &msg_size, sizeof(msg_size), 0);
+    send(client_fd, &correlation_id, sizeof(correlation_id), 0);
 
     close(client_fd);
-
     close(server_fd);
     return 0;
 }
