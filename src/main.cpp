@@ -1,5 +1,7 @@
-#include "utils.hpp"
+#include "requests.hpp"
 
+using cpp_kafka::Response;
+using cpp_kafka::receive_request_from_client;
 
 int main(int argc, char* argv[]) {
     // Disable output buffering
@@ -50,26 +52,15 @@ int main(int argc, char* argv[]) {
     cout << "Client connected\n";
 
     // Read request
-    char buffer[1024];
-    ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer), 0);
-    if (bytes_read <= 0){
-        cerr << "Couldn't read request, or client disconnected\n";
+    Response response{};
+    if (receive_request_from_client(client_fd, response) > 0){
         close(client_fd);
         close(server_fd);
         return 1;
     }
 
-    // Prepare response
-    fint msg_size, correlation_id;
-
-    // Extract correlation ID from the buffer.
-    memcpy(&correlation_id, buffer + 8, sizeof(correlation_id));
-    // Generate message size
-    msg_size = host_to_network_long(sizeof(correlation_id));
-
     // Send response
-    send(client_fd, &msg_size, sizeof(msg_size), 0);
-    send(client_fd, &correlation_id, sizeof(correlation_id), 0);
+    response.send_to_client(client_fd);
 
     close(client_fd);
     close(server_fd);

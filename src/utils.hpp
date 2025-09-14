@@ -20,6 +20,7 @@ using std::endl;
 using std::memcpy;
 using std::unitbuf;
 
+#define host_to_network_short(val) htons(val)
 #define host_to_network_long(val) htonl(val)
 
 using fshort = int16_t;
@@ -32,5 +33,8 @@ using SockAddr = struct sockaddr;
 using SockAddrPtr = struct sockaddr*;
 
 namespace cpp_kafka{
-
+    enum class KafkaErrorCode: fshort{
+        NO_ERROR = 0,
+        UNSUPPORTED_VERSION = 35
+    };
 }
