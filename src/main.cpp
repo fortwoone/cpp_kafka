@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -13,6 +14,10 @@ using std::cout;
 using std::endl;
 using std::unitbuf;
 
+#define host_to_network_long(val) htonl(val)
+
+using fint = int32_t;
+using uint = uint32_t;
 
 using InternetSockAddr = struct sockaddr_in;
 using SockAddr = struct sockaddr;
@@ -62,14 +67,17 @@ int main(int argc, char* argv[]) {
     InternetSockAddr client_addr{};
     socklen_t client_addr_len = sizeof(client_addr);
 
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
     cerr << "Logs from your program will appear here!\n";
-    
-    // Uncomment this block to pass the first stage
-    // 
-     int client_fd = accept(server_fd, reinterpret_cast<SockAddrPtr>(&client_addr), &client_addr_len);
-     cout << "Client connected\n";
-     close(client_fd);
+
+    int client_fd = accept(server_fd, reinterpret_cast<SockAddrPtr>(&client_addr), &client_addr_len);
+    cout << "Client connected\n";
+
+    fint msg_size = host_to_network_long(0);
+    fint corr_id = host_to_network_long(7);
+    write(client_fd, &msg_size, sizeof(msg_size));
+    write(client_fd, &corr_id, sizeof(corr_id));
+
+    close(client_fd);
 
     close(server_fd);
     return 0;
