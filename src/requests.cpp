@@ -14,12 +14,14 @@ namespace cpp_kafka{
 
     void DescTopicPartArrEntry::append_to_response(Response& response) const{
         response.append(host_to_network_short(to_underlying(err_code)));    // Error code
+        cerr << "Appending " << sizeof(err_code) << "bytes to response\n";
         response.append(static_cast<fbyte>(topic_name.size() + 1));         // Topic name string length
+        cerr << "Appending 1 byte to response\n";
         for (char c: topic_name){
             response.append(c);                                             // Topic name string
         }
-        response.append(host_to_network_long(uuid.uuid_portions[0]));       // Higher part of the UUID
-        response.append(host_to_network_long(uuid.uuid_portions[1]));       // Lower part of the UUID
+        response.append(static_cast<ulong>(host_to_network_long(uuid.uuid_portions[0])));       // Higher part of the UUID
+        response.append(static_cast<ulong>(host_to_network_long(uuid.uuid_portions[1])));       // Lower part of the UUID
         response.append(static_cast<fbyte>(is_internal ? 1 : 0));           // 1 if internal, 0 if not
         response.append(static_cast<fbyte>(partitions.size() + 1));         // Size of the partition array + 1 (because varint)
         for (const auto& obj: partitions){
