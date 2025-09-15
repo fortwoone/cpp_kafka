@@ -7,7 +7,7 @@
 namespace cpp_kafka{
     // region Response
     Response::Response(){
-        msg_size = 0;
+        msg_size = sizeof(correlation_id);
         correlation_id = 0;
     }
 
@@ -91,24 +91,6 @@ namespace cpp_kafka{
         response.set_correlation_id(new_corr_id);
 
         cerr << "Request Correlation ID: " << new_corr_id << "\n";
-
-        // Extract the client ID.
-        // Get the size first.
-        ushort cli_id_len;
-        memcpy(
-            &cli_id_len,
-            buffer + 12,
-            sizeof(cli_id_len)
-        );
-        request.header.client_id.resize(cli_id_len);
-        // Extract the string contents.
-        memcpy(
-            request.header.client_id.data(),  // Edit directly into the string.
-            buffer + 14,
-            cli_id_len
-        );
-
-        cerr << "API Client ID: " << request.header.client_id << "\n";
 
         fshort version = request.header.request_api_version;
         if (version >= 0 && version <= 4){
