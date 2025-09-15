@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <bit>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -13,6 +14,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <vector>
 
 using std::cerr;
 using std::cout;
@@ -37,6 +39,37 @@ using SockAddr = struct sockaddr;
 using SockAddrPtr = struct sockaddr*;
 
 namespace cpp_kafka{
+#if __cplusplus >= 202302L
+    using std::byteswap;
+# else
+    using std::vector;
+    // Define byteswap if it doesn't exist.
+    template <class T> constexpr T byteswap(const T& orig) noexcept{
+        auto tp_size = sizeof(T);
+        vector<ubyte> computation, ret_vec;
+        const auto* data_ptr = reinterpret_cast<const ubyte*>(&orig);
+        computation.insert(computation.end(), data_ptr, data_ptr + tp_size);
+        ret_vec.insert(ret_vec.end(), computation.rbegin(), computation.rend());
+        T ret = 0;
+        memcpy(
+            &ret,
+            ret_vec.data(),
+            tp_size
+        );
+        return ret;
+    }
+# endif
+
+    template <class T> T read_big_endian(char* bytes){
+        T ret = 0;
+        memcpy(&ret, bytes, sizeof(ret));
+
+        if constexpr (std::endian::native == std::endian::little){  // NOLINT
+            ret = byteswap(ret);
+        }
+        return ret;
+    }
+
     enum class KafkaAPIKey: fshort{
         API_VERSIONS = 18
     };

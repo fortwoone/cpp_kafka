@@ -5,6 +5,36 @@
 #include "requests.hpp"
 
 namespace cpp_kafka{
+    // region Request
+    fshort Request::get_api_key() const{
+        return header.request_api_key;
+    }
+
+    fshort Request::get_api_version() const{
+        return header.request_api_version;
+    }
+
+    fint Request::get_correlation_id() const{
+        return header.correlation_id;
+    }
+
+    string Request::get_client_id() const{
+        return header.client_id;
+    }
+
+    void Request::set_api_key(fshort new_key){
+        header.request_api_key = new_key;
+    }
+
+    void Request::set_api_version(fshort new_ver){
+        header.request_api_version = new_ver;
+    }
+
+    void Request::set_correlation_id(fint value){
+        header.correlation_id = value;
+    }
+    // endregion
+
     // region Response
     Response::Response(){
         msg_size = sizeof(correlation_id);
@@ -25,7 +55,7 @@ namespace cpp_kafka{
 
     void Response::append(vector<ubyte> contents){
         data.insert(data.end(), contents.begin(), contents.end());
-        msg_size += contents.size();
+        msg_size += static_cast<fint>(contents.size());
     }
 
     void Response::set_correlation_id(fint value){
@@ -63,36 +93,40 @@ namespace cpp_kafka{
         }
 
         // Extract the request API key from the buffer.
-        memcpy(
-            &request.header.request_api_key,
-            buffer + 4,
-            sizeof(request.header.request_api_key)
-        );
+//        fshort api_key;
+//        memcpy(
+//            &api_key,
+//            buffer + 4,
+//            sizeof(api_key)
+//        );
+        request.set_api_key(read_big_endian<fshort>(buffer + 4));  // IGNORE
 
-        cerr << "Request API Key: " << request.header.request_api_key << "\n";
+        cerr << "Request API Key: " << request.get_api_key() << "\n";
 
         // Extract the request API version from the buffer.
-        memcpy(
-            &request.header.request_api_version,
-            buffer + 6,
-            sizeof(request.header.request_api_version)
-        );
-
-        cerr << "Request API Version: " << request.header.request_api_version << "\n";
+        request.set_api_version(read_big_endian<fshort>(buffer + 6));
+//        memcpy(
+//            &request.header.request_api_version,
+//            buffer + 6,
+//            sizeof(request.header.request_api_version)
+//        );
+//
+        cerr << "Request API Version: " << request.get_api_version() << "\n";
 
         // Extract correlation ID from the buffer.
-        fint new_corr_id;
-        memcpy(
-            &new_corr_id,
-            buffer + 8,
-            sizeof(new_corr_id)
-        );
-        request.header.correlation_id = new_corr_id;
-        response.set_correlation_id(new_corr_id);
+//        fint new_corr_id;
+//        memcpy(
+//            &new_corr_id,
+//            buffer + 8,
+//            sizeof(new_corr_id)
+//        );
+//        request.header.correlation_id = new_corr_id;
+        response.set_correlation_id(read_big_endian<fint>(buffer + 8));
+        request.set_correlation_id(response.get_correlation_id());
 
-        cerr << "Request Correlation ID: " << new_corr_id << "\n";
+        cerr << "Request Correlation ID: " << response.get_correlation_id() << "\n";
 
-        fshort version = request.header.request_api_version;
+        fshort version = request.get_api_version();
         if (version >= 0 && version <= 4){
             response.append(host_to_network_short(to_underlying(KafkaErrorCode::NO_ERROR)));    // Error code
             response.append(static_cast<ubyte>(2));                                             // Length of API version entries + 1

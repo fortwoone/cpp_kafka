@@ -16,11 +16,11 @@ namespace cpp_kafka{
     using std::to_underlying;
     using std::vector;
 
-    struct APIVersionArrEntry{
-        KafkaAPIKey api_key;
-        fshort min_version, max_version;
-        ubyte tag_buffer{0};
-    };
+//    struct APIVersionArrEntry{
+//        KafkaAPIKey api_key;
+//        fshort min_version, max_version;
+//        ubyte tag_buffer{0};
+//    };
 
     struct RequestHeader{
         fshort request_api_key, request_api_version;
@@ -28,8 +28,20 @@ namespace cpp_kafka{
         string client_id;
     };
 
-    struct Request{
+    class Request{
         RequestHeader header;
+
+        public:
+            Request() = default;
+
+            [[nodiscard]] fshort get_api_key() const;
+            [[nodiscard]] fint get_correlation_id() const;
+            [[nodiscard]] fshort get_api_version() const;
+            [[nodiscard]] string get_client_id() const;
+
+            void set_api_key(fshort new_key);
+            void set_api_version(fshort new_ver);
+            void set_correlation_id(fint value);
     };
 
     class Response{
@@ -45,7 +57,7 @@ namespace cpp_kafka{
             [[nodiscard]] vector<ubyte> get_body() const;
 
             template<class T> void append(const T& value){
-                const ubyte* data_as_bytes = reinterpret_cast<const ubyte*>(&value);
+                const auto* data_as_bytes = reinterpret_cast<const ubyte*>(&value);
                 fint size = sizeof(T);
                 data.insert(data.end(), data_as_bytes, data_as_bytes + size);
                 msg_size += size;
