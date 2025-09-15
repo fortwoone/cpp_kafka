@@ -5,31 +5,54 @@
 #include "requests.hpp"
 
 namespace cpp_kafka{
+    // region Response
+    Response::Response(){
+        msg_size = 0;
+        correlation_id = 0;
+    }
+
+    fint Response::get_msg_size() const{
+        return msg_size;
+    }
+
+    fint Response::get_correlation_id() const{
+        return correlation_id;
+    }
+
+    vector<ubyte> Response::get_body() const{
+        return data;
+    }
+
+    void Response::append(vector<ubyte> contents){
+        data.insert(data.end(), contents.begin(), contents.end());
+        msg_size += contents.size();
+    }
+
+    void Response::set_correlation_id(fint value){
+        correlation_id = value;
+    }
+
     void Response::send_to_client(int client_fd){
-        fshort err_code_as_net = host_to_network_short(to_underlying(err_code));
-        // 1 is added to this value because this is how the protocol defines the encoding.
-        ubyte api_ver_size_as_net = static_cast<ubyte>(
-            host_to_network_short(api_versions.size() + 1)
-        );
+        fint msg_size_as_net = host_to_network_long(msg_size);
 
-        send(client_fd, &msg_size, sizeof(msg_size), 0);
-        send(client_fd, &correlation_id, sizeof(correlation_id), 0);
-        send(client_fd, &err_code_as_net, sizeof(err_code_as_net), 0);
-        send(client_fd, &api_ver_size_as_net, sizeof(api_ver_size_as_net), 0);
-
-        for (const auto& api_ver_entry: api_versions){
-            fshort api_key_as_net = host_to_network_short(to_underlying(api_ver_entry.api_key));
-            fshort api_minver_as_net = host_to_network_short(api_ver_entry.min_version);
-            fshort api_maxver_as_net = host_to_network_short(api_ver_entry.max_version);
-            ubyte api_tagbuf_as_net = static_cast<ubyte>(host_to_network_short(api_ver_entry.tag_buffer));
-            send(client_fd, &api_key_as_net, sizeof(api_key_as_net), 0);
-            send(client_fd, &api_minver_as_net, sizeof(api_minver_as_net), 0);
-            send(client_fd, &api_maxver_as_net, sizeof(api_maxver_as_net), 0);
-            send(client_fd, &api_tagbuf_as_net, sizeof(api_tagbuf_as_net), 0);
+        ssize_t bytes_written = send(client_fd, &msg_size_as_net, sizeof(msg_size_as_net), 0);
+        if (bytes_written <= 0){
+            throw runtime_error("Could not send message size to client.");
         }
 
-        send(client_fd, &throttle_time_ms, sizeof(throttle_time_ms), 0);
+        fint corr_id_as_net = host_to_network_long(correlation_id);
+        bytes_written = send(client_fd, &corr_id_as_net, sizeof(corr_id_as_net), 0);
+        if (bytes_written <= 0){
+            throw runtime_error("Failed to send the correlation ID to the client.");
+        }
+
+        const auto& body = data;
+        bytes_written = send(client_fd, body.data(), body.size(), 0);
+        if (bytes_written <= 0){
+            throw runtime_error("Could not send response body to client.");
+        }
     }
+    // endregion
 
     int receive_request_from_client(int client_fd, Response& response, Request& request){
         char buffer[1024];
@@ -58,14 +81,16 @@ namespace cpp_kafka{
         cerr << "Request API Version: " << request.header.request_api_version << "\n";
 
         // Extract correlation ID from the buffer.
+        fint new_corr_id;
         memcpy(
-            &response.correlation_id,
+            &new_corr_id,
             buffer + 8,
-            sizeof(response.correlation_id)
+            sizeof(new_corr_id)
         );
-        request.header.correlation_id = response.correlation_id;
+        request.header.correlation_id = new_corr_id;
+        response.set_correlation_id(new_corr_id);
 
-        cerr << "Request Correlation ID: " << response.correlation_id << "\n";
+        cerr << "Request Correlation ID: " << new_corr_id << "\n";
 
         // Extract the client ID.
         // Get the size first.
@@ -85,30 +110,21 @@ namespace cpp_kafka{
 
         cerr << "API Client ID: " << request.header.client_id << "\n";
 
-        response.throttle_time_ms = 0;
-
-        if (request.header.request_api_version > 4){
-            response.err_code = KafkaErrorCode::UNSUPPORTED_VERSION;
+        fshort version = request.header.request_api_version;
+        if (version >= 0 && version <= 4){
+            response.append(host_to_network_short(to_underlying(KafkaErrorCode::NO_ERROR)));    // Error code
+            response.append(static_cast<ubyte>(2));                                             // Length of API version entries + 1
+            response.append(host_to_network_short(to_underlying(KafkaAPIKey::API_VERSIONS)));   // API key
+            response.append(host_to_network_short(0));                                          // Min. version
+            response.append(host_to_network_short(4));                                          // Max. version
+            response.append(static_cast<ubyte>(0));                                             // Tag buffer for API version entry
+            response.append(host_to_network_long(0));                                           // Throttle time (ms)
+            response.append(static_cast<ubyte>(0));                                             // Tag buffer for throttle field.
         }
         else{
-            response.err_code = KafkaErrorCode::NO_ERROR;
-            response.api_versions.push_back(
-                {
-                    KafkaAPIKey::API_VERSIONS,
-                    0,                        // Min. supported version
-                    4                         // Max. supported version
-                }
-            );
+            response.append(host_to_network_short(to_underlying(KafkaErrorCode::UNSUPPORTED_VERSION))); // Error code
         }
 
-        // Compute the message size.
-        response.msg_size = host_to_network_long(
-            sizeof(KafkaErrorCode)
-            + sizeof(response.correlation_id)
-            + sizeof(APIVersionArrEntry) * response.api_versions.size()
-            + sizeof(response.throttle_time_ms)
-            + 2
-        );
         return 0;
     }
 }

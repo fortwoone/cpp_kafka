@@ -32,14 +32,30 @@ namespace cpp_kafka{
         RequestHeader header;
     };
 
-    struct Response{
+    class Response{
         fint msg_size;
         fint correlation_id;
-        KafkaErrorCode err_code;
-        vector<APIVersionArrEntry> api_versions;
-        fint throttle_time_ms;
+        vector<ubyte> data;
 
-        void send_to_client(int client_fd);
+        public:
+            Response();
+
+            [[nodiscard]] fint get_msg_size() const;
+            [[nodiscard]] fint get_correlation_id() const;
+            [[nodiscard]] vector<ubyte> get_body() const;
+
+            template<class T> void append(const T& value){
+                const ubyte* data_as_bytes = reinterpret_cast<const ubyte*>(&value);
+                fint size = sizeof(T);
+                data.insert(data.end(), data_as_bytes, data_as_bytes + size);
+                msg_size += size;
+            }
+
+            void append(vector<ubyte> contents);
+
+            void set_correlation_id(fint value);
+
+            void send_to_client(int client_fd);
     };
 
     int receive_request_from_client(int client_fd, Response& response, Request& request);
