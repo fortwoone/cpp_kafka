@@ -1,5 +1,6 @@
 #include <csignal>
 #include <functional>
+#include <thread>
 #include "requests.hpp"
 
 using cpp_kafka::Request;
@@ -9,9 +10,27 @@ using cpp_kafka::receive_request_from_client;
 using std::exit;
 using std::function;
 using std::signal;
+using std::thread;
 
 function<void(int)> shutdown_handler;
 void sig_handler(int sig){shutdown_handler(sig);}
+
+void handle_client(int client_fd){
+    while (true){
+        Request request{};
+        Response response{};
+        if (receive_request_from_client(client_fd, response, request) > 0) {
+            close(client_fd);
+            break;
+        }
+
+        // Send response
+        response.send_to_client(client_fd);
+    }
+
+    cout << "Client " << client_fd << " has disconnected.\n";
+    close(client_fd);
+}
 
 int main(int argc, char* argv[]) {
     // Disable output buffering
@@ -53,37 +72,27 @@ int main(int argc, char* argv[]) {
 
     cout << "Waiting for a client to connect...\n";
 
-    InternetSockAddr client_addr{};
-    socklen_t client_addr_len = sizeof(client_addr);
-
     cerr << "Logs from your program will appear here!\n";
 
-    int client_fd = accept(server_fd, reinterpret_cast<SockAddrPtr>(&client_addr), &client_addr_len);
-    cout << "Client connected\n";
-
-    shutdown_handler = [client_fd, server_fd](int sig){
-        cout << "Caught signal: " << sig << "\n";
-        close(client_fd);
+    shutdown_handler = [server_fd](int sig){
+        cout << "Caught signal " << sig << "\n";
         close(server_fd);
         exit(0);
     };
-
     signal(SIGINT, sig_handler);
 
     // Read request
-    while (true) {
-        if (fork() != 0){
-            continue;
-        }
-        Request request{};
-        Response response{};
-        if (receive_request_from_client(client_fd, response, request) > 0) {
-            close(client_fd);
-            close(server_fd);
-            return 1;
-        }
+    while (true) {  // NOLINT
+        InternetSockAddr client_addr{};
+        socklen_t client_addr_len = sizeof(client_addr);
+        int client_fd = accept(server_fd, reinterpret_cast<SockAddrPtr>(&client_addr), &client_addr_len);
+        cout << "Client connected at file descriptor: " << client_fd << "\n";
 
-        // Send response
-        response.send_to_client(client_fd);
+        // Handle the client in a separate thread.
+        thread client_thread(handle_client, client_fd);
+        client_thread.detach();
     }
+
+    close(server_fd);
+    return 0;
 }
