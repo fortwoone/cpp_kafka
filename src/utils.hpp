@@ -33,6 +33,8 @@ using fshort = int16_t;
 using ushort = uint16_t;
 using fint = int32_t;
 using uint = uint32_t;
+using flong = int64_t;
+using ulong = uint64_t;
 
 using InternetSockAddr = struct sockaddr_in;
 using SockAddr = struct sockaddr;
@@ -77,6 +79,7 @@ namespace cpp_kafka{
 
     enum class KafkaErrorCode: fshort{
         NO_ERROR = 0,
+        UNKNOWN_TOPIC_OR_PARTITION = 3,
         UNSUPPORTED_VERSION = 35
     };
 }

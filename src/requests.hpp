@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <array>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -11,6 +12,7 @@
 #include "utils.hpp"
 
 namespace cpp_kafka{
+    using std::array;
     using std::runtime_error;
     using std::string;
     using std::to_underlying;
@@ -71,6 +73,54 @@ namespace cpp_kafka{
 
         void append_to_response(Response& response) const;
     };
+
+    // A topic as it is sent in a DescribeTopicPartitions request.
+    struct DescribeTopicReqArrEntry{
+        string data;
+    };
+
+    struct TopicUUID{
+        // Force UUID parts to be stored contiguously in memory.
+        // Doing this because relying on __int128 is generally a bad idea
+        // (not a standard type, and as such most standard functions aren't compatible with it).
+        array<ulong, 2> uuid_portions;
+    };
+
+    struct TopicPartition{
+        // Empty for now: only supporting "unknown topic" responses
+    };
+
+    enum TopicOperationFlags: uint{
+        UNKNOWN = 0,
+        ANY = 1,
+        ALL = (1 << 2),
+        READ = (1 << 3),
+        WRITE = (1 << 4),
+        CREATE = (1 << 5),
+        DELETE = (1 << 6),
+        ALTER = (1 << 7),
+        DESCRIBE = (1 << 8),
+        CLUSTER_ACTION = (1 << 9),
+        DESCRIBE_CONFIGS = (1 << 10),
+        ALTER_CONFIGS = (1 << 11),
+        IDEMPOTENT_WRITE = (1 << 12),
+        CREATE_TOKENS = (1 << 13),
+        DESCRIBE_TOKENS = (1 << 14)
+    };
+
+    struct DescTopicPartArrEntry{
+        KafkaErrorCode err_code;
+        string topic_name;
+        TopicUUID uuid;
+        bool is_internal;
+        vector<TopicPartition> partitions;
+        TopicOperationFlags allowed_ops_flags;
+
+        void append_to_response(Response& response) const;
+    };
+
+    void handle_api_versions_request(const Request& request, Response& response);
+    void handle_describe_topic_partitions_request(const Request& request, Response& response, char* buffer);
 
     int receive_request_from_client(int client_fd, Response& response, Request& request);
 }
