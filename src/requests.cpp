@@ -93,34 +93,16 @@ namespace cpp_kafka{
         }
 
         // Extract the request API key from the buffer.
-//        fshort api_key;
-//        memcpy(
-//            &api_key,
-//            buffer + 4,
-//            sizeof(api_key)
-//        );
         request.set_api_key(read_big_endian<fshort>(buffer + 4));  // IGNORE
 
         cerr << "Request API Key: " << request.get_api_key() << "\n";
 
         // Extract the request API version from the buffer.
         request.set_api_version(read_big_endian<fshort>(buffer + 6));
-//        memcpy(
-//            &request.header.request_api_version,
-//            buffer + 6,
-//            sizeof(request.header.request_api_version)
-//        );
-//
+
         cerr << "Request API Version: " << request.get_api_version() << "\n";
 
         // Extract correlation ID from the buffer.
-//        fint new_corr_id;
-//        memcpy(
-//            &new_corr_id,
-//            buffer + 8,
-//            sizeof(new_corr_id)
-//        );
-//        request.header.correlation_id = new_corr_id;
         response.set_correlation_id(read_big_endian<fint>(buffer + 8));
         request.set_correlation_id(response.get_correlation_id());
 

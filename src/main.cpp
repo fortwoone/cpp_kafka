@@ -1,8 +1,17 @@
+#include <csignal>
+#include <functional>
 #include "requests.hpp"
 
 using cpp_kafka::Request;
 using cpp_kafka::Response;
 using cpp_kafka::receive_request_from_client;
+
+using std::exit;
+using std::function;
+using std::signal;
+
+function<void(int)> shutdown_handler;
+void sig_handler(int sig){shutdown_handler(sig);}
 
 int main(int argc, char* argv[]) {
     // Disable output buffering
@@ -52,19 +61,29 @@ int main(int argc, char* argv[]) {
     int client_fd = accept(server_fd, reinterpret_cast<SockAddrPtr>(&client_addr), &client_addr_len);
     cout << "Client connected\n";
 
-    // Read request
-    Request request{};
-    Response response{};
-    if (receive_request_from_client(client_fd, response, request) > 0){
+    shutdown_handler = [client_fd, server_fd](int sig){
+        cout << "Caught signal: " << sig << "\n";
         close(client_fd);
         close(server_fd);
-        return 1;
+        exit(0);
+    };
+
+    signal(SIGINT, sig_handler);
+
+    // Read request
+    while (true) {
+        if (fork() != 0){
+            continue;
+        }
+        Request request{};
+        Response response{};
+        if (receive_request_from_client(client_fd, response, request) > 0) {
+            close(client_fd);
+            close(server_fd);
+            return 1;
+        }
+
+        // Send response
+        response.send_to_client(client_fd);
     }
-
-    // Send response
-    response.send_to_client(client_fd);
-
-    close(client_fd);
-    close(server_fd);
-    return 0;
 }
