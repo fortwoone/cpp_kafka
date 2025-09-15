@@ -71,7 +71,8 @@ namespace cpp_kafka{
     }
 
     enum class KafkaAPIKey: fshort{
-        API_VERSIONS = 18
+        API_VERSIONS = 18,
+        DESCRIBE_TOPIC_PARTITIONS = 75
     };
 
     enum class KafkaErrorCode: fshort{

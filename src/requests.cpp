@@ -5,6 +5,13 @@
 #include "requests.hpp"
 
 namespace cpp_kafka{
+    void APIVersionArrEntry::append_to_response(Response& response) const{
+        response.append(host_to_network_short(to_underlying(api_key))); // API key
+        response.append(host_to_network_short(min_version));            // Min. supported version
+        response.append(host_to_network_short(max_version));            // Max supported version
+        response.append(static_cast<ubyte>(0));                         // Tag buffer
+    }
+
     // region Request
     fshort Request::get_api_key() const{
         return header.request_api_key;
@@ -110,12 +117,31 @@ namespace cpp_kafka{
 
         fshort version = request.get_api_version();
         if (version >= 0 && version <= 4){
+            vector<APIVersionArrEntry> version_entries;
+            version_entries.reserve(2);
+            version_entries.push_back(
+                {
+                    KafkaAPIKey::API_VERSIONS,
+                    0,
+                    4
+                }
+            );
+            version_entries.push_back(
+                {
+                    KafkaAPIKey::DESCRIBE_TOPIC_PARTITIONS,
+                    0,
+                    0
+                }
+            );
+
             response.append(host_to_network_short(to_underlying(KafkaErrorCode::NO_ERROR)));    // Error code
-            response.append(static_cast<ubyte>(2));                                             // Length of API version entries + 1
-            response.append(host_to_network_short(to_underlying(KafkaAPIKey::API_VERSIONS)));   // API key
-            response.append(host_to_network_short(0));                                          // Min. version
-            response.append(host_to_network_short(4));                                          // Max. version
-            response.append(static_cast<ubyte>(0));                                             // Tag buffer for API version entry
+            response.append(static_cast<ubyte>(version_entries.size() + 1));                    // Length of API version entries + 1
+
+            // Append all entries to the response.
+            for (const auto& ver: version_entries){
+                ver.append_to_response(response);
+            }
+
             response.append(host_to_network_long(0));                                           // Throttle time (ms)
             response.append(static_cast<ubyte>(0));                                             // Tag buffer for throttle field.
         }

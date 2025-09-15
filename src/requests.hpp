@@ -16,12 +16,6 @@ namespace cpp_kafka{
     using std::to_underlying;
     using std::vector;
 
-//    struct APIVersionArrEntry{
-//        KafkaAPIKey api_key;
-//        fshort min_version, max_version;
-//        ubyte tag_buffer{0};
-//    };
-
     struct RequestHeader{
         fshort request_api_key, request_api_version;
         fint correlation_id;
@@ -68,6 +62,14 @@ namespace cpp_kafka{
             void set_correlation_id(fint value);
 
             void send_to_client(int client_fd);
+    };
+
+    struct APIVersionArrEntry{
+        KafkaAPIKey api_key;
+        fshort min_version, max_version;
+        ubyte tag_buffer{0};
+
+        void append_to_response(Response& response) const;
     };
 
     int receive_request_from_client(int client_fd, Response& response, Request& request);
