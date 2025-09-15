@@ -1,5 +1,6 @@
 #include "requests.hpp"
 
+using cpp_kafka::Request;
 using cpp_kafka::Response;
 using cpp_kafka::receive_request_from_client;
 
@@ -52,8 +53,9 @@ int main(int argc, char* argv[]) {
     cout << "Client connected\n";
 
     // Read request
+    Request request{};
     Response response{};
-    if (receive_request_from_client(client_fd, response) > 0){
+    if (receive_request_from_client(client_fd, response, request) > 0){
         close(client_fd);
         close(server_fd);
         return 1;
