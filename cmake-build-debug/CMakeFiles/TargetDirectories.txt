@@ -1,0 +1,3 @@
+/mnt/c/Users/denau/Documents/C++/cpp_kafka/cmake-build-debug/CMakeFiles/kafka.dir
+/mnt/c/Users/denau/Documents/C++/cpp_kafka/cmake-build-debug/CMakeFiles/edit_cache.dir
+/mnt/c/Users/denau/Documents/C++/cpp_kafka/cmake-build-debug/CMakeFiles/rebuild_cache.dir
