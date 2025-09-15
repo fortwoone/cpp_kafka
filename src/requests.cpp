@@ -17,6 +17,7 @@ namespace cpp_kafka{
         cerr << "Appending " << sizeof(err_code) << "bytes to response\n";
         response.append(static_cast<fbyte>(topic_name.size() + 1));         // Topic name string length
         cerr << "Appending 1 byte to response\n";
+        cerr << "Topic name: " << topic_name << "\n";
         for (char c: topic_name){
             response.append(c);                                             // Topic name string
         }
