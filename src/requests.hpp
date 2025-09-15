@@ -37,6 +37,7 @@ namespace cpp_kafka{
         fint correlation_id;
         KafkaErrorCode err_code;
         vector<APIVersionArrEntry> api_versions;
+        fint throttle_time_ms;
 
         void send_to_client(int client_fd);
     };

@@ -27,6 +27,8 @@ namespace cpp_kafka{
             send(client_fd, &api_maxver_as_net, sizeof(api_maxver_as_net), 0);
             send(client_fd, &api_tagbuf_as_net, sizeof(api_tagbuf_as_net), 0);
         }
+
+        send(client_fd, &throttle_time_ms, sizeof(throttle_time_ms), 0);
     }
 
     int receive_request_from_client(int client_fd, Response& response, Request& request){
@@ -44,12 +46,16 @@ namespace cpp_kafka{
             sizeof(request.header.request_api_key)
         );
 
+        cerr << "Request API Key: " << request.header.request_api_key << "\n";
+
         // Extract the request API version from the buffer.
         memcpy(
             &request.header.request_api_version,
             buffer + 6,
             sizeof(request.header.request_api_version)
         );
+
+        cerr << "Request API Version: " << request.header.request_api_version << "\n";
 
         // Extract correlation ID from the buffer.
         memcpy(
@@ -58,6 +64,8 @@ namespace cpp_kafka{
             sizeof(response.correlation_id)
         );
         request.header.correlation_id = response.correlation_id;
+
+        cerr << "Request Correlation ID: " << response.correlation_id << "\n";
 
         // Extract the client ID.
         // Get the size first.
@@ -74,6 +82,10 @@ namespace cpp_kafka{
             buffer + 14,
             cli_id_len
         );
+
+        cerr << "API Client ID: " << request.header.client_id << "\n";
+
+        response.throttle_time_ms = 0;
 
         if (request.header.request_api_version > 4){
             response.err_code = KafkaErrorCode::UNSUPPORTED_VERSION;
@@ -94,6 +106,7 @@ namespace cpp_kafka{
             sizeof(KafkaErrorCode)
             + sizeof(response.correlation_id)
             + sizeof(APIVersionArrEntry) * response.api_versions.size()
+            + sizeof(response.throttle_time_ms)
             + 2
         );
         return 0;
