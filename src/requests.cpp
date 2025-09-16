@@ -176,7 +176,7 @@ namespace cpp_kafka{
                         cerr << "UUID: ";
                         for (ubyte j = 0; j < 16; ++j) {
                             entry.uuid[j] = buf[uuid_offset + j];
-                            cerr << hex << buf[uuid_offset + j];
+                            cerr << hex << static_cast<char>(buf[uuid_offset + j]);
                         }
                         cerr << "\n";
 
