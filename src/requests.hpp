@@ -3,7 +3,10 @@
 //
 
 #pragma once
+#include <algorithm>
 #include <array>
+#include <fcntl.h>
+#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -13,10 +16,14 @@
 
 namespace cpp_kafka{
     using std::array;
+    using std::find_if;
+    using std::ifstream;
     using std::runtime_error;
     using std::string;
     using std::to_underlying;
     using std::vector;
+
+    constexpr char METADATA_FILE_PATH[] = "/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log";
 
     struct RequestHeader{
         fshort request_api_key, request_api_version;
@@ -79,15 +86,14 @@ namespace cpp_kafka{
         string data;
     };
 
-    struct TopicUUID{
-        // Force UUID parts to be stored contiguously in memory.
-        // Doing this because relying on __int128 is generally a bad idea
-        // (not a standard type, and as such most standard functions aren't compatible with it).
-        array<ulong, 2> uuid_portions;
-    };
+    using TopicUUID = array<ubyte, 16>;
 
     struct TopicPartition{
-        // Empty for now: only supporting "unknown topic" responses
+        KafkaErrorCode err_code;
+        fint partition_index, leader_id, leader_epoch;
+        vector<fint> replica_nodes, isr_nodes, elr_nodes, last_known_elr_nodes, offline_replica_nodes;
+
+        void append_to_response(Response& response) const;
     };
 
     enum TopicOperationFlags: uint{
@@ -118,6 +124,8 @@ namespace cpp_kafka{
 
         void append_to_response(Response& response) const;
     };
+
+    vector<DescTopicPartArrEntry> retrieve_data(const vector<DescribeTopicReqArrEntry>& requested_topics);
 
     void handle_api_versions_request(const Request& request, Response& response);
     void handle_describe_topic_partitions_request(const Request& request, Response& response, char* buffer);
