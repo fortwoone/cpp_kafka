@@ -178,6 +178,10 @@ namespace cpp_kafka{
                             entry.uuid[j] = buf[uuid_offset + j];
                             cerr << hex << static_cast<int>(buf[uuid_offset + j]) << " ";
                         }
+                        cerr << "\nEntry's UUID: ";
+                        for (ubyte k: entry.uuid){
+                            cerr << hex << static_cast<int>(k) << " ";
+                        }
                         cerr << "\n";
 
                         TopicPartition partition;
