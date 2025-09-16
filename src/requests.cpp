@@ -3,6 +3,9 @@
 //
 
 #include "requests.hpp"
+#include <iomanip>
+
+using std::hex;
 
 namespace cpp_kafka{
     void APIVersionArrEntry::append_to_response(Response& response) const{
@@ -42,12 +45,8 @@ namespace cpp_kafka{
 
     void DescTopicPartArrEntry::append_to_response(Response& response) const{
         response.append(host_to_network_short(to_underlying(err_code)));    // Error code
-        cerr << "Appending " << sizeof(err_code) << "bytes to response\n";
         response.append(static_cast<fbyte>(topic_name.size() + 1));         // Topic name string length
-        cerr << "Appending 1 byte to response\n";
-        cerr << "Topic name: " << topic_name << "\n";
         for (char c : topic_name){
-            cerr << "Added character: " << c << "\n";
             response.append(c);              // Topic name string
         }
         for (ubyte i: uuid){
@@ -174,9 +173,13 @@ namespace cpp_kafka{
 
                     uint uuid_offset = i + name_length + 1;
                     if (uuid_offset + 16 <= bytes_read) {
+                        cerr << "UUID: ";
                         for (ubyte j = 0; j < 16; ++j) {
                             entry.uuid[j] = buf[uuid_offset + j];
+                            cerr << hex << buf[uuid_offset + j];
                         }
+                        cerr << "\n";
+
                         TopicPartition partition;
                         partition.err_code = KafkaErrorCode::NO_ERROR;
                         partition.partition_index = 0;
