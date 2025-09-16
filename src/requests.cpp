@@ -171,7 +171,7 @@ namespace cpp_kafka{
             req_topic_obj.data.insert(
                 req_topic_obj.data.end(),
                 buffer + starting_point + offset_for_next_topic + 1,
-                buffer + starting_point + offset_for_next_topic + 1 + string_name_length
+                buffer + starting_point + offset_for_next_topic + 1 + string_name_length - 1
             );
             // Account for the tag buffer (one empty byte).
             offset_for_next_topic += string_name_length + 1;
