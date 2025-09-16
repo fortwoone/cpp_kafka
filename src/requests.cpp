@@ -18,9 +18,9 @@ namespace cpp_kafka{
         response.append(static_cast<fbyte>(topic_name.size() + 1));         // Topic name string length
         cerr << "Appending 1 byte to response\n";
         cerr << "Topic name: " << topic_name << "\n";
-        for (char c: topic_name){
-            cerr << "Added character: " << c << "\n";
-            response.append(static_cast<char>(c));                                             // Topic name string
+        for (size_t i = 0; i < topic_name.size(); ++i){
+            cerr << "Added character: " << topic_name[i] << "\n";
+            response.append(static_cast<char>(topic_name[i]));                                  // Topic name string
         }
         response.append(static_cast<ulong>(host_to_network_long(uuid.uuid_portions[0])));       // Higher part of the UUID
         response.append(static_cast<ulong>(host_to_network_long(uuid.uuid_portions[1])));       // Lower part of the UUID
