@@ -173,16 +173,27 @@ namespace cpp_kafka{
 
                     uint uuid_offset = i + name_length + 1;
                     if (uuid_offset + 16 <= bytes_read) {
-                        cerr << "UUID: ";
-                        for (ubyte j = 0; j < 16; ++j) {
-                            entry.uuid[j] = buf[uuid_offset + j];
-                            cerr << hex << static_cast<int>(buf[uuid_offset + j]) << " ";
-                        }
+                        entry.uuid[0] = buf[uuid_offset];
+                        entry.uuid[1] = buf[uuid_offset + 1];
+                        entry.uuid[2] = buf[uuid_offset + 2];
+                        entry.uuid[3] = buf[uuid_offset + 3];
+                        entry.uuid[4] = buf[uuid_offset + 4];
+                        entry.uuid[5] = buf[uuid_offset + 4];
+                        entry.uuid[6] = buf[uuid_offset + 5];
+                        entry.uuid[7] = buf[uuid_offset + 6];
+                        entry.uuid[8] = buf[uuid_offset + 7];
+                        entry.uuid[9] = buf[uuid_offset + 8];
+                        entry.uuid[10] = buf[uuid_offset + 9];
+                        entry.uuid[11] = buf[uuid_offset + 10];
+                        entry.uuid[12] = buf[uuid_offset + 11];
+                        entry.uuid[13] = buf[uuid_offset + 12];
+                        entry.uuid[14] = buf[uuid_offset + 13];
+                        entry.uuid[15] = buf[uuid_offset + 14];
                         cerr << "\nEntry's UUID: ";
                         for (ubyte k: entry.uuid){
                             cerr << hex << static_cast<int>(k) << " ";
                         }
-                        cerr << "\n";
+                        cerr << std::dec << "\n";
 
                         TopicPartition partition;
                         partition.err_code = KafkaErrorCode::NO_ERROR;
