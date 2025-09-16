@@ -51,7 +51,7 @@ namespace cpp_kafka{
         }
         for (ubyte i: uuid){
             cerr << "UUID byte: " << std::hex << static_cast<int>(i) << std::dec << "\n";
-            response.append(static_cast<ubyte>(host_to_network_short(i)));  // UUID portions
+            response.append(static_cast<ubyte>(i));  // UUID portions
         }
         response.append(static_cast<fbyte>(is_internal ? 1 : 0));           // 1 if internal, 0 if not
         response.append(static_cast<fbyte>(partitions.size() + 1));         // Size of the partition array + 1 (because varint)
