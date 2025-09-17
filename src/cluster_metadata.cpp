@@ -56,7 +56,7 @@ namespace cpp_kafka{
 
             // Extract records.
             record_count = read_be_and_advance<fint>(buf, offset);
-            cerr << "Read record count: " << record_count << "\n",
+            cerr << "Read record count: " << std::hex << record_count << std::dec << "\n",
             last_batch.records.resize(record_count);
             cerr << "Resized record vector\n";
             for (size_t rec_idx = 0; rec_idx < last_batch.records.size(); ++rec_idx){
