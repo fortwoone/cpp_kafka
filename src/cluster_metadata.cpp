@@ -23,7 +23,7 @@ namespace cpp_kafka{
         ssize_t bytes_read = read(fd, buf, 1024);
         cerr << "Read " << bytes_read << " bytes from cluster metadata file\n";
 
-        fint record_count;
+        uint record_count;
         ssize_t offset = 0;
 
         while (offset < bytes_read){
@@ -55,7 +55,7 @@ namespace cpp_kafka{
             cerr << "Read base sequence: " << last_batch.base_sequence << "\n";
 
             // Extract records.
-            record_count = read_be_and_advance<fint>(buf, offset);
+            record_count = read_be_and_advance<uint>(buf, offset);
             cerr << "Read record count: " << std::hex << record_count << std::dec << "\n",
             last_batch.records.resize(record_count);
             cerr << "Resized record vector\n";
