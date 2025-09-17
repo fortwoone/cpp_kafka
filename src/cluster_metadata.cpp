@@ -53,7 +53,7 @@ namespace cpp_kafka{
             cerr << "Read base sequence\n";
 
             // Extract records.
-            record_count = read_be_and_advance<uint>(buf, offset);
+            record_count = read_and_advance<uint>(buf, offset);
             cerr << "Read record count: " << record_count << "\n",
             last_batch.records.resize(record_count);
             cerr << "Resized record vector\n";
