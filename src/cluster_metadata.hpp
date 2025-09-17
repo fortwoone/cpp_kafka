@@ -79,7 +79,7 @@ namespace cpp_kafka{
         fshort attributes;
         fint last_offset_delta;
         flong base_timestamp, max_timestamp;
-        ulong producer_id;
+        flong producer_id;
         ushort producer_epoch;
         fint base_sequence;
         vector<Record> records;
