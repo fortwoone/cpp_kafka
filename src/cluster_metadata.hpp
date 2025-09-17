@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 #include <fstream>
+#include <stdexcept>
 #include <string>
 #include <variant>
 #include <vector>
@@ -15,6 +16,7 @@
 namespace cpp_kafka{
     using std::holds_alternative;
 //    using std::ifstream;
+    using std::runtime_error;
     using std::string;
     using std::variant;
     using std::vector;
