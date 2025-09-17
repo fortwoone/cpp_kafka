@@ -44,9 +44,13 @@ namespace cpp_kafka{
             last_batch.base_timestamp = read_be_and_advance<flong>(buf, offset);
             cerr << "Read base timestamp\n";
             last_batch.max_timestamp = read_be_and_advance<flong>(buf, offset);
+            cerr << "Read max timestamp\n";
             last_batch.producer_id = read_be_and_advance<ulong>(buf, offset);
+            cerr << "Read producer ID\n";
             last_batch.producer_epoch = read_be_and_advance<ushort>(buf, offset);
+            cerr << "Read producer epoch\n";
             last_batch.base_sequence = read_be_and_advance<fint>(buf, offset);
+            cerr << "Read base sequence\n";
 
             // Extract records.
             record_count = read_be_and_advance<uint>(buf, offset);
