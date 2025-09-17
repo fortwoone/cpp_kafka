@@ -4,9 +4,11 @@
 
 #include "cluster_metadata.hpp"
 #include <iostream>
+#include <iomanip>
 
 
 using std::cerr;
+
 namespace cpp_kafka{
     vector<RecordBatch> load_cluster_metadata(){
         vector<RecordBatch> ret;
@@ -28,11 +30,11 @@ namespace cpp_kafka{
             auto& last_batch = ret.emplace_back();
             cerr << "Created a new record batch\n";
             last_batch.base_offset = read_be_and_advance<flong>(buf, offset);
-            cerr << "Read base offset\n";
+            cerr << "Read base offset: " << last_batch.base_offset << "\n";
             last_batch.batch_length = read_be_and_advance<fint>(buf, offset);
-            cerr << "Read batch length\n";
+            cerr << "Read batch length: " << last_batch.batch_length << "\n";
             last_batch.partition_leader_epoch = read_be_and_advance<uint>(buf, offset);
-            cerr << "Read partition leader epoch\n";
+            cerr << "Read partition leader epoch: " << last_batch.partition_leader_epoch << "\n";
             last_batch.magic = read_be_and_advance<ubyte>(buf, offset);
             cerr << "Read magic byte\n";
             last_batch.crc_checksum = read_be_and_advance<fint>(buf, offset);
