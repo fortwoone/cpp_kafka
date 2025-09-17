@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <fcntl.h>
 #include <fstream>
 #include <string>
 #include <variant>
@@ -13,7 +14,7 @@
 
 namespace cpp_kafka{
     using std::holds_alternative;
-    using std::ifstream;
+//    using std::ifstream;
     using std::string;
     using std::variant;
     using std::vector;
@@ -81,6 +82,27 @@ namespace cpp_kafka{
         fint base_sequence;
         vector<Record> records;
     };
+
+    template<class T> inline T read_and_advance(char* buf, ssize_t& offset){
+        T ret;
+        memcpy(&ret, buf + offset, sizeof(T));
+        offset += sizeof(T);
+        return ret;
+    }
+
+    /**
+     * Reads data from a buffer in big endian, with the given offset as a difference.
+     * Advances offset by the size of T afterwards for the next read.
+     * @tparam T The type that is to be read.
+     * @param buf The source buffer.
+     * @param offset The offset used. This will be advanced after the value is computed by sizeof(T).
+     * @return The read value.
+     */
+    template<class T> inline T read_be_and_advance(char* buf, ssize_t& offset){
+        T ret = read_big_endian<T>(buf + offset);
+        offset += sizeof(T);
+        return ret;
+    }
 
     vector<RecordBatch> load_cluster_metadata();
 }
