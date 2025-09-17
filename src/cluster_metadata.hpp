@@ -80,7 +80,7 @@ namespace cpp_kafka{
         fint last_offset_delta;
         flong base_timestamp, max_timestamp;
         flong producer_id;
-        ushort producer_epoch;
+        fshort producer_epoch;
         fint base_sequence;
         vector<Record> records;
     };
