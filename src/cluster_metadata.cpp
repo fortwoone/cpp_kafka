@@ -60,11 +60,17 @@ namespace cpp_kafka{
             for (size_t rec_idx = 0; rec_idx < last_batch.records.size(); ++rec_idx){
                 auto& rec_ref = last_batch.records.at(rec_idx);
                 rec_ref.length = read_be_and_advance<fbyte>(buf, offset);
+                cerr << "Read record length\n";
                 rec_ref.attributes = read_be_and_advance<ubyte>(buf, offset);
+                cerr << "Read record attributes\n";
                 rec_ref.timestamp_delta = read_be_and_advance<fbyte>(buf, offset);
+                cerr << "Read timestamp delta\n";
                 rec_ref.offset_delta = read_be_and_advance<fbyte>(buf, offset);
+                cerr << "Read offset delta\n";
                 rec_ref.key_length = read_be_and_advance<fbyte>(buf, offset);
+                cerr << "Read key length\n";
                 rec_ref.key.resize(rec_ref.key_length);
+                cerr << "Resized key string\n";
                 for (size_t key_idx = 0; key_idx < rec_ref.key.size(); ++key_idx){
                     rec_ref.key.at(key_idx) = read_and_advance<char>(buf, offset);
                 }
