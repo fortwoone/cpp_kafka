@@ -40,7 +40,7 @@ namespace cpp_kafka{
             last_batch.crc_checksum = read_be_and_advance<fint>(buf, offset);
             cerr << "Read CRC checksum" << std::hex << last_batch.crc_checksum << std::dec << "\n";
             last_batch.attributes = read_be_and_advance<fshort>(buf, offset);
-            cerr << "Read batch attributes" << last_batch.attributes "\n";
+            cerr << "Read batch attributes" << last_batch.attributes << "\n";
             last_batch.last_offset_delta = read_be_and_advance<fint>(buf, offset);
             cerr << "Read last offset delta\n";
             last_batch.base_timestamp = read_be_and_advance<flong>(buf, offset);
