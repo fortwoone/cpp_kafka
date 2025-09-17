@@ -10,20 +10,22 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "utils.hpp"
+#include "cluster_metadata.hpp"
 
 namespace cpp_kafka{
     using std::array;
     using std::find_if;
+    using std::holds_alternative;
     using std::ifstream;
     using std::runtime_error;
     using std::string;
     using std::to_underlying;
+    using std::variant;
     using std::vector;
-
-    constexpr char METADATA_FILE_PATH[] = "/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log";
 
     struct RequestHeader{
         fshort request_api_key, request_api_version;
@@ -86,8 +88,6 @@ namespace cpp_kafka{
         string data;
     };
 
-    using TopicUUID = array<ubyte, 16>;
-
     struct TopicPartition{
         KafkaErrorCode err_code;
         fint partition_index, leader_id, leader_epoch;
@@ -114,7 +114,7 @@ namespace cpp_kafka{
         DESCRIBE_TOKENS = (1 << 14)
     };
 
-    struct DescTopicPartArrEntry{
+    struct Topic{
         KafkaErrorCode err_code;
         string topic_name;
         TopicUUID uuid;
@@ -125,7 +125,7 @@ namespace cpp_kafka{
         void append_to_response(Response& response) const;
     };
 
-    vector<DescTopicPartArrEntry> retrieve_data(const vector<DescribeTopicReqArrEntry>& requested_topics);
+    vector<Topic> retrieve_data(const vector<DescribeTopicReqArrEntry>& requested_topics);
 
     void handle_api_versions_request(const Request& request, Response& response);
     void handle_describe_topic_partitions_request(const Request& request, Response& response, char* buffer);

@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <array>
 #include <bit>
 #include <cstdint>
 #include <cstdlib>
@@ -41,6 +42,9 @@ using SockAddr = struct sockaddr;
 using SockAddrPtr = struct sockaddr*;
 
 namespace cpp_kafka{
+    using std::array;
+
+    using TopicUUID = array<ubyte, 16>;
 #if __cplusplus >= 202302L
     using std::byteswap;
 # else

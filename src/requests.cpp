@@ -13,46 +13,46 @@ namespace cpp_kafka{
     }
 
     void TopicPartition::append_to_response(Response& response) const{
-        response.append(host_to_network_short(to_underlying(err_code)));
-        response.append(host_to_network_long(partition_index));
-        response.append(host_to_network_long(leader_id));
-        response.append(host_to_network_long(leader_epoch));
-        response.append(static_cast<ubyte>(replica_nodes.size() + 1));
+        response.append(host_to_network_short(to_underlying(err_code)));        // Error code
+        response.append(host_to_network_long(partition_index));                 // Partition index
+        response.append(host_to_network_long(leader_id));                       // Partition leader ID
+        response.append(host_to_network_long(leader_epoch));                    // Partition leader epoch
+        response.append(static_cast<ubyte>(replica_nodes.size() + 1));          // Partition replica node array length + 1 (varint)
         for (const auto& rnode: replica_nodes){
-            response.append(host_to_network_long(rnode));
+            response.append(host_to_network_long(rnode));                       // Replica nodes
         }
-        response.append(static_cast<ubyte>(isr_nodes.size() + 1));
+        response.append(static_cast<ubyte>(isr_nodes.size() + 1));              // Partition ISR node array length + 1 (varint)
         for (const auto& rnode: isr_nodes){
-            response.append(host_to_network_long(rnode));
+            response.append(host_to_network_long(rnode));                       // ISR nodes
         }
-        response.append(static_cast<ubyte>(elr_nodes.size() + 1));
+        response.append(static_cast<ubyte>(elr_nodes.size() + 1));              // Partition ELR node array length + 1 (varint)
         for (const auto& rnode: elr_nodes){
-            response.append(host_to_network_long(rnode));
+            response.append(host_to_network_long(rnode));                       // ELR nodes
         }
-        response.append(static_cast<ubyte>(last_known_elr_nodes.size() + 1));
+        response.append(static_cast<ubyte>(last_known_elr_nodes.size() + 1));   // Partition last known ELR array length + 1 (varint)
         for (const auto& rnode: last_known_elr_nodes){
-            response.append(host_to_network_long(rnode));
+            response.append(host_to_network_long(rnode));                       // Last known ELR nodes
         }
-        response.append(static_cast<ubyte>(offline_replica_nodes.size() + 1));
+        response.append(static_cast<ubyte>(offline_replica_nodes.size() + 1));  // Partition offline replica node array length + 1 (varint)
         for (const auto& rnode: offline_replica_nodes){
-            response.append(host_to_network_long(rnode));
+            response.append(host_to_network_long(rnode));                       // Offline replica nodes
         }
-        response.append(static_cast<ubyte>(0));
+        response.append(static_cast<ubyte>(0));                                 // Tag buffer
     }
 
-    void DescTopicPartArrEntry::append_to_response(Response& response) const{
+    void Topic::append_to_response(Response& response) const{
         response.append(host_to_network_short(to_underlying(err_code)));    // Error code
         response.append(static_cast<fbyte>(topic_name.size() + 1));         // Topic name string length
         for (char c : topic_name){
-            response.append(c);              // Topic name string
+            response.append(c);                                             // Topic name string
         }
         for (ubyte i: uuid){
-            response.append(static_cast<ubyte>(i));  // UUID portions
+            response.append(static_cast<ubyte>(i));                         // UUID portions
         }
         response.append(static_cast<fbyte>(is_internal ? 1 : 0));           // 1 if internal, 0 if not
         response.append(static_cast<fbyte>(partitions.size() + 1));         // Size of the partition array + 1 (because varint)
         for (const auto& obj: partitions){
-            obj.append_to_response(response);
+            obj.append_to_response(response);                               // Append all partitions
         }
         response.append(host_to_network_long(allowed_ops_flags));           // Allowed operations bitfield
         response.append(static_cast<ubyte>(0));                             // Tag buffer
@@ -138,75 +138,68 @@ namespace cpp_kafka{
     // endregion
 
 
-    vector<DescTopicPartArrEntry> retrieve_data(const vector<DescribeTopicReqArrEntry>& requested_topics){
-        vector<DescTopicPartArrEntry> ret;
+    vector<Topic> retrieve_data(const vector<DescribeTopicReqArrEntry>& requested_topics){
+        vector<Topic> ret;
         ret.reserve(requested_topics.size());
 
-        int cluster_metadata = open(METADATA_FILE_PATH, O_RDONLY);
+        vector<Record> topic_records, part_records;
+        auto metadata = load_cluster_metadata();
 
-        if (cluster_metadata == -1){
-            throw runtime_error("Could not open the cluster metadata file. Please ensure it exists.");
-        }
-
-        ubyte buf[1024];
-        ssize_t bytes_read = read(cluster_metadata, buf, 1024);
-        close(cluster_metadata);
-
-        if (bytes_read <= 0){
-            throw runtime_error("Failed to read from the cluster metadata file.");
-        }
-
-
-        bool found = false;
-        for (const auto& req_topic: requested_topics){
-            string topic_name = req_topic.data;
-            auto name_length = topic_name.length();
-            for (ssize_t i = 0; i < bytes_read - name_length; ++i){
-                if (!memcmp(buf + i, topic_name.c_str(), name_length) && !buf[i + name_length]){
-                    found = true;
-                    DescTopicPartArrEntry entry;
-                    entry.topic_name = topic_name;
-                    entry.err_code = KafkaErrorCode::NO_ERROR;
-
-                    uint uuid_offset = i + name_length + 1;
-                    if (uuid_offset + 16 <= bytes_read) {
-                        entry.uuid[0] = buf[uuid_offset];
-                        entry.uuid[1] = buf[uuid_offset + 1];
-                        entry.uuid[2] = buf[uuid_offset + 2];
-                        entry.uuid[3] = buf[uuid_offset + 3];
-                        entry.uuid[4] = buf[uuid_offset + 4];
-                        entry.uuid[5] = buf[uuid_offset + 4];
-                        entry.uuid[6] = buf[uuid_offset + 5];
-                        entry.uuid[7] = buf[uuid_offset + 6];
-                        entry.uuid[8] = buf[uuid_offset + 7];
-                        entry.uuid[9] = buf[uuid_offset + 8];
-                        entry.uuid[10] = buf[uuid_offset + 9];
-                        entry.uuid[11] = buf[uuid_offset + 10];
-                        entry.uuid[12] = buf[uuid_offset + 11];
-                        entry.uuid[13] = buf[uuid_offset + 12];
-                        entry.uuid[14] = buf[uuid_offset + 13];
-                        entry.uuid[15] = buf[uuid_offset + 14];
-
-                        TopicPartition partition;
-                        partition.err_code = KafkaErrorCode::NO_ERROR;
-                        partition.partition_index = 0;
-                        partition.leader_id = 1;
-                        partition.leader_epoch = 0;
-                        partition.replica_nodes = {1};
-                        partition.isr_nodes = {1};
-                        entry.partitions.push_back(partition);
-                        ret.push_back(entry);
-                    }
+        for (const auto& batch: metadata){
+            for (const auto& record: batch.records){
+                if (record.is_topic()){
+                    topic_records.push_back(record);
+                }
+                else if (record.is_partition()){
+                    part_records.push_back(record);
                 }
             }
-            if (!found){
-                DescTopicPartArrEntry not_found;
-                not_found.topic_name = topic_name;
+        }
+
+        auto start_of_tr_list = topic_records.begin();
+        auto end_of_tr_list = topic_records.end();
+
+        for (const auto& req_topic: requested_topics){
+            auto found_iter = find_if(
+                start_of_tr_list,
+                end_of_tr_list,
+                [req_topic](Record& topic_record){
+                    auto& topic_payload = std::get<TopicPayload>(topic_record.payload);
+                    return topic_payload.name == req_topic.data;
+                }
+            );
+            if (found_iter == end_of_tr_list){
+                Topic not_found;
+                not_found.topic_name = req_topic.data;
                 not_found.err_code = KafkaErrorCode::UNKNOWN_TOPIC_OR_PARTITION;
                 not_found.uuid.fill(0);
                 ret.push_back(not_found);
+                continue;
             }
-            found = false;
+            Topic entry;
+            entry.err_code = KafkaErrorCode::NO_ERROR;
+            entry.topic_name = req_topic.data;
+            entry.uuid = std::get<TopicPayload>(found_iter->payload).uuid;
+            entry.allowed_ops_flags = TopicOperationFlags::ALL;
+            uint part_index = 0;
+            for (const auto& part_rec: part_records){
+                auto& part_pl = std::get<PartitionPayload>(part_rec.payload);
+                if (part_pl.topic_uuid != entry.uuid){
+                    continue;
+                }
+
+                auto& last_part = entry.partitions.emplace_back();
+                last_part.err_code = KafkaErrorCode::NO_ERROR;
+                last_part.partition_index = part_index;
+                part_index++;
+
+                last_part.replica_nodes = part_pl.replica_nodes;
+                last_part.isr_nodes = part_pl.isr_nodes;
+                last_part.elr_nodes = {};
+                last_part.last_known_elr_nodes = {};
+                last_part.offline_replica_nodes = {};
+            }
+            ret.push_back(entry);
         }
 
         return ret;
@@ -288,7 +281,7 @@ namespace cpp_kafka{
             response.append(host_to_network_short(to_underlying(KafkaErrorCode::UNSUPPORTED_VERSION))); // Error code
         }
         else{
-            vector<DescTopicPartArrEntry> topic_entries = retrieve_data(requested_topics);
+            vector<Topic> topic_entries = retrieve_data(requested_topics);
 
             response.append(static_cast<fint>(0));                          // Throttle time
             response.append(static_cast<fbyte>(topic_entries.size() + 1));  // Topic array size + 1 (because varint)
