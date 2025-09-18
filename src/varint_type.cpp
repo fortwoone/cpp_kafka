@@ -26,7 +26,9 @@ namespace cpp_kafka{
             }
             count++;
         }
+        cerr << "Value before decoding: " << value << "\n";
         fint decoded_value = (value >> 1) ^ (-(value & 1));
+        cerr << "Decoded value: " << decoded_value << "\n";
         auto ret = varint_t(decoded_value);
         cerr << "Offset pre-computation: " << offset << "\n";
         cerr << "Decoded value required size: "<< ret.needed_size() << "\n";
