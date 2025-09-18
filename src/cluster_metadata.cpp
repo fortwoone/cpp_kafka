@@ -69,7 +69,7 @@ namespace cpp_kafka{
                 rec_ref.offset_delta = varint_t::decode_and_advance(buf, offset);
                 cerr << "Read offset delta: " << static_cast<fint>(rec_ref.offset_delta) << "\n";
                 rec_ref.key_length = varint_t::decode_and_advance(buf, offset);
-                cerr << "Read key length: " << static_cast<uint>(rec_ref.key_length) << "\n";
+                cerr << "Read key length: " << static_cast<fint>(rec_ref.key_length) << "\n";
                 rec_ref.key.resize(static_cast<uint>(rec_ref.key_length));
                 cerr << "Resized key string\n";
                 for (char& key_idx : rec_ref.key){
