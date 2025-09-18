@@ -9,6 +9,7 @@ namespace cpp_kafka{
     varint_t varint_t::decode_and_advance(char* buf, ssize_t& offset){
         fint value = 0;
         ubyte byte = 0, shift = 0;
+        ubyte count = 0;
 
         while (true){
             memcpy(&byte, buf + offset + count, 1);
@@ -22,6 +23,7 @@ namespace cpp_kafka{
             if (shift >= 35){
                 throw runtime_error("Encoded value is too large for a VARINT.");
             }
+            count++;
         }
         fint decoded_value = (value >> 1) ^ (-(value & 1));
         auto ret = varint_t(decoded_value);
