@@ -279,7 +279,7 @@ namespace cpp_kafka{
         ssize_t moved_offset = starting_point;
         // Since this value is encoded as a VARINT, we need to subtract 1 from this count.
         auto req_topic_arr_len = varint_t::decode_and_advance(buffer, moved_offset) - 1;
-        requested_topics.resize(req_topic_arr_len);  // Create empty elements from the start so it is easier to edit them.
+        requested_topics.resize(static_cast<ssize_t>(req_topic_arr_len));  // Create empty elements from the start so it is easier to edit them.
 
         ssize_t offset_for_next_topic = starting_point + 1;
         for (fbyte i = 0; i < req_topic_arr_len; ++i){
