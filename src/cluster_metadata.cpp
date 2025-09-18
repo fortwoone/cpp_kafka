@@ -131,6 +131,7 @@ namespace cpp_kafka{
                             }
                             tr_payload.uuid[k] = read_and_advance<ubyte>(buf, offset);
                         }
+                        offset++;  // Jump one byte ahead to avoid reading incorrect values.
 
                         cerr << "Topic UUID: " << std::hex;
                         for (const auto& i: tr_payload.uuid){
@@ -139,6 +140,7 @@ namespace cpp_kafka{
                         cerr << std::dec << "\n";
 
                         auto tagged_fields_count = unsigned_varint_t::decode_and_advance(buf, offset);
+                        cerr << "Tagged fields count: " << static_cast<uint>(tagged_fields_count) << "\n";
                         break;
                     }
                     case 0x03:  // Partition record
@@ -159,6 +161,7 @@ namespace cpp_kafka{
                             part_payload.topic_uuid[k] = read_and_advance<ubyte>(buf, offset);
                             cerr << static_cast<uint>(part_payload.topic_uuid[k]) << " ";
                         }
+                        offset++;  // Jump one byte ahead to avoid reading incorrect values.
                         cerr << std::dec << "\n";
                         auto repl_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
                         cerr << "Replica array size: " << static_cast<uint>(repl_arr_size) << "\n";
@@ -247,7 +250,7 @@ namespace cpp_kafka{
                         break;
                     }
                     default:
-                        cerr << "Invalid type: 0x" << std::hex << rec_header.type << std::dec << "\n";
+                        cerr << "Invalid type: 0x" << std::hex << static_cast<uint>(rec_header.type) << std::dec << "\n";
                         throw runtime_error("Unsupported record type.");
                 }
                 auto header_count = unsigned_varint_t::decode_and_advance(buf, offset);
