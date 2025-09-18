@@ -25,7 +25,9 @@ namespace cpp_kafka{
             }
             count++;
         }
+        cerr << "Offset pre-computation: " << offset << "\n";
         offset += count;
+        cerr << "Offset post-computation: " << offset << "\n";
         fint decoded_value = (value >> 1) ^ (-(value & 1));
         return decoded_value;
     }
