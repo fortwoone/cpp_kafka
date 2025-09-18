@@ -44,9 +44,9 @@ namespace cpp_kafka{
             last_batch.last_offset_delta = read_be_and_advance<fint>(buf, offset);
             cerr << "Read last offset delta: " << last_batch.last_offset_delta << "\n";
             last_batch.base_timestamp = read_be_and_advance<flong>(buf, offset);
-            cerr << "Read base timestamp\n";
+            cerr << "Read base timestamp: " << last_batch.base_timestamp << "\n";
             last_batch.max_timestamp = read_be_and_advance<flong>(buf, offset);
-            cerr << "Read max timestamp\n";
+            cerr << "Read max timestamp: " << last_batch.max_timestamp << "\n";
             last_batch.producer_id = read_be_and_advance<flong>(buf, offset);
             cerr << "Read producer ID: " << last_batch.producer_id << "\n";
             last_batch.producer_epoch = read_be_and_advance<fshort>(buf, offset);
@@ -62,15 +62,15 @@ namespace cpp_kafka{
             for (size_t rec_idx = 0; rec_idx < last_batch.records.size(); ++rec_idx){
                 auto& rec_ref = last_batch.records.at(rec_idx);
                 rec_ref.length = read_be_and_advance<fbyte>(buf, offset);
-                cerr << "Read record length\n";
+                cerr << "Read record length: " << rec_ref.length << "\n";
                 rec_ref.attributes = read_be_and_advance<ubyte>(buf, offset);
-                cerr << "Read record attributes\n";
+                cerr << "Read record attributes: " << std::hex << rec_ref.attributes << std::dec << "\n";
                 rec_ref.timestamp_delta = read_be_and_advance<fbyte>(buf, offset);
-                cerr << "Read timestamp delta\n";
+                cerr << "Read timestamp delta: " << rec_ref.timestamp_delta << "\n";
                 rec_ref.offset_delta = read_be_and_advance<fbyte>(buf, offset);
-                cerr << "Read offset delta\n";
+                cerr << "Read offset delta: " << rec_ref.offset_delta << "\n";
                 rec_ref.key_length = read_be_and_advance<fbyte>(buf, offset);
-                cerr << "Read key length\n";
+                cerr << "Read key length: " << rec_ref.key_length << "\n";
                 rec_ref.key.resize(rec_ref.key_length);
                 cerr << "Resized key string\n";
                 for (size_t key_idx = 0; key_idx < rec_ref.key.size(); ++key_idx){
