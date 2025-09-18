@@ -277,6 +277,7 @@ namespace cpp_kafka{
         vector<DescribeTopicReqArrEntry> requested_topics;
 
         ssize_t moved_offset = starting_point;
+        // Since this is an array size, we need to deduce 1 from it.
         auto req_topic_arr_len = unsigned_varint_t::decode_and_advance(buffer, moved_offset) - 1;
         cerr << "Requested topic array length: " << static_cast<fint>(req_topic_arr_len) << "\n";
         requested_topics.resize(static_cast<ssize_t>(req_topic_arr_len));  // Create empty elements from the start so it is easier to edit them.
