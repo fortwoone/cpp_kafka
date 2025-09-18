@@ -13,27 +13,42 @@ namespace cpp_kafka{
     }
 
     void TopicPartition::append_to_response(Response& response) const{
-        response.append(host_to_network_short(to_underlying(err_code)));        // Error code
-        response.append(host_to_network_long(partition_index));                 // Partition index
-        response.append(host_to_network_long(leader_id));                       // Partition leader ID
-        response.append(host_to_network_long(leader_epoch));                    // Partition leader epoch
-        response.append(static_cast<ubyte>(replica_nodes.size() + 1));          // Partition replica node array length + 1 (varint)
+        response.append(host_to_network_short(to_underlying(err_code)));                // Error code
+        response.append(host_to_network_long(partition_index));                         // Partition index
+        response.append(host_to_network_long(leader_id));                               // Partition leader ID
+        response.append(host_to_network_long(leader_epoch));                            // Partition leader epoch
+        varint_t repl_node_size = static_cast<fint>(replica_nodes.size() + 1);          // Partition replica node array length + 1 (varint)
+        for (const ubyte& len_portion: repl_node_size.encode()){
+            response.append(len_portion);                                               // Append portions of size
+        }
         for (const auto& rnode: replica_nodes){
-            response.append(host_to_network_long(rnode));                       // Replica nodes
+            response.append(host_to_network_long(rnode));                               // Replica nodes
         }
-        response.append(static_cast<ubyte>(isr_nodes.size() + 1));              // Partition ISR node array length + 1 (varint)
+        varint_t isr_arr_size = static_cast<fint>(isr_nodes.size() + 1);                // Partition ISR node array length + 1 (varint)
+        for (const ubyte& len_portion: isr_arr_size.encode()){
+            response.append(len_portion);
+        }
         for (const auto& rnode: isr_nodes){
-            response.append(host_to_network_long(rnode));                       // ISR nodes
+            response.append(host_to_network_long(rnode));                               // ISR nodes
         }
-        response.append(static_cast<ubyte>(elr_nodes.size() + 1));              // Partition ELR node array length + 1 (varint)
+        varint_t elr_arr_size = static_cast<fint>(elr_nodes.size() + 1);                // Partition ELR node array length + 1 (varint)
+        for (const ubyte& len_portion: elr_arr_size.encode()){
+            response.append(len_portion);
+        }
         for (const auto& rnode: elr_nodes){
-            response.append(host_to_network_long(rnode));                       // ELR nodes
+            response.append(host_to_network_long(rnode));                               // ELR nodes
         }
-        response.append(static_cast<ubyte>(last_known_elr_nodes.size() + 1));   // Partition last known ELR array length + 1 (varint)
+        varint_t lkelr_arr_size = static_cast<fint>(last_known_elr_nodes.size() + 1);   // Partition last known ELR array length + 1 (varint)
+        for (const ubyte& len_portion: lkelr_arr_size.encode()){
+            response.append(len_portion);
+        }
         for (const auto& rnode: last_known_elr_nodes){
-            response.append(host_to_network_long(rnode));                       // Last known ELR nodes
+            response.append(host_to_network_long(rnode));                               // Last known ELR nodes
         }
-        response.append(static_cast<ubyte>(offline_replica_nodes.size() + 1));  // Partition offline replica node array length + 1 (varint)
+        varint_t offrep_arr_size = static_cast<fint>(offline_replica_nodes.size() + 1); // Partition offline replica node array length + 1 (varint)
+        for (const ubyte& len_portion: offrep_arr_size.encode()){
+            response.append(len_portion);
+        }
         for (const auto& rnode: offline_replica_nodes){
             response.append(host_to_network_long(rnode));                       // Offline replica nodes
         }
@@ -41,21 +56,27 @@ namespace cpp_kafka{
     }
 
     void Topic::append_to_response(Response& response) const{
-        response.append(host_to_network_short(to_underlying(err_code)));    // Error code
-        response.append(static_cast<fbyte>(topic_name.size() + 1));         // Topic name string length
+        response.append(host_to_network_short(to_underlying(err_code)));            // Error code
+        varint_t topic_name_size = static_cast<fint>(topic_name.size() + 1);        // Topic name string length + 1 because array size encoding
+        for (const ubyte& len_portion: topic_name_size.encode()){
+            response.append(len_portion);                                           // Append portions of the varint
+        }
         for (char c : topic_name){
-            response.append(c);                                             // Topic name string
+            response.append(c);                                                     // Topic name string
         }
         for (ubyte i: uuid){
-            response.append(static_cast<ubyte>(i));                         // UUID portions
+            response.append(static_cast<ubyte>(i));                                 // UUID portions
         }
-        response.append(static_cast<fbyte>(is_internal ? 1 : 0));           // 1 if internal, 0 if not
-        response.append(static_cast<fbyte>(partitions.size() + 1));         // Size of the partition array + 1 (because varint)
+        response.append(static_cast<fbyte>(is_internal ? 1 : 0));                   // 1 if internal, 0 if not
+        varint_t partition_list_size = static_cast<fint>(partitions.size() + 1);    // Size of the partition array + 1 (because varint)
+        for (const ubyte& part_len_portion: partition_list_size.encode()){
+            response.append(part_len_portion);                                      // Append portions of the varint
+        }
         for (const auto& obj: partitions){
-            obj.append_to_response(response);                               // Append all partitions
+            obj.append_to_response(response);                                       // Append all partitions
         }
-        response.append(host_to_network_long(allowed_ops_flags));           // Allowed operations bitfield
-        response.append(static_cast<ubyte>(0));                             // Tag buffer
+        response.append(host_to_network_long(allowed_ops_flags));                   // Allowed operations bitfield
+        response.append(static_cast<ubyte>(0));                                     // Tag buffer
     }
 
     // region Request
@@ -226,7 +247,10 @@ namespace cpp_kafka{
             );
 
             response.append(host_to_network_short(to_underlying(KafkaErrorCode::NO_ERROR)));    // Error code
-            response.append(static_cast<ubyte>(version_entries.size() + 1));                    // Length of API version entries + 1
+            varint_t version_entry_size = static_cast<fint>(version_entries.size() + 1);        // Length of API version entries + 1
+            for (const ubyte& len_portion: version_entry_size.encode()){
+                response.append(len_portion);
+            }
 
             // Append all entries to the response.
             for (const auto& ver: version_entries){
@@ -251,19 +275,20 @@ namespace cpp_kafka{
 
         // Extract the requested topics.
         vector<DescribeTopicReqArrEntry> requested_topics;
+
+        ssize_t moved_offset = starting_point;
         // Since this value is encoded as a VARINT, we need to subtract 1 from this count.
-        auto req_topic_arr_len = static_cast<fbyte>(read_big_endian<fbyte>(buffer + starting_point) - 1);
+        auto req_topic_arr_len = varint_t::decode_and_advance(buffer, moved_offset) - 1;
         requested_topics.resize(req_topic_arr_len);  // Create empty elements from the start so it is easier to edit them.
 
-        uint offset_for_next_topic = 0;
+        ssize_t offset_for_next_topic = starting_point + 1;
         for (fbyte i = 0; i < req_topic_arr_len; ++i){
-            auto string_name_length = read_big_endian<fbyte>(buffer + starting_point + offset_for_next_topic + 1);
-            offset_for_next_topic++;
+            auto string_name_length = varint_t::decode_and_advance(buffer, offset_for_next_topic);
             auto& req_topic_obj = requested_topics.at(i);
             req_topic_obj.data.insert(
                 req_topic_obj.data.end(),
-                buffer + starting_point + offset_for_next_topic + 1,
-                buffer + starting_point + offset_for_next_topic + 1 + string_name_length - 1
+                buffer + offset_for_next_topic,
+                buffer + offset_for_next_topic + string_name_length - 1
             );
             // Account for the tag buffer (one empty byte).
             offset_for_next_topic += string_name_length + 1;
@@ -283,13 +308,16 @@ namespace cpp_kafka{
         else{
             vector<Topic> topic_entries = retrieve_data(requested_topics);
 
-            response.append(static_cast<fint>(0));                          // Throttle time
-            response.append(static_cast<fbyte>(topic_entries.size() + 1));  // Topic array size + 1 (because varint)
-            for (const auto& topic: topic_entries){
-                topic.append_to_response(response);                         // Append results for each topic to the response.
+            response.append(static_cast<fint>(0));                              // Throttle time
+            varint_t topic_count = static_cast<fint>(topic_entries.size() + 1); // Topic array size + 1 (because varint)
+            for (const ubyte& len_portion: topic_count.encode()){
+                response.append(len_portion);
             }
-            response.append(static_cast<ubyte>(0xFF));                      // Next cursor (null for now)
-            response.append(static_cast<ubyte>(0));                         // Tag buffer
+            for (const auto& topic: topic_entries){
+                topic.append_to_response(response);                             // Append results for each topic to the response.
+            }
+            response.append(static_cast<ubyte>(0xFF));                          // Next cursor (null for now)
+            response.append(static_cast<ubyte>(0));                             // Tag buffer
         }
     }
 
