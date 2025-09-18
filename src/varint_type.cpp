@@ -74,9 +74,14 @@ namespace cpp_kafka{
             }
             count++;
         }
-        offset += count;
 
-        return value;  // Implicitly converted to varint.
+        auto ret = unsigned_varint_t(value);
+        cerr << "Offset pre-computation: " << offset << "\n";
+        cerr << "Decoded value required size: "<< ret.needed_size() << "\n";
+        offset += ret.needed_size();
+        cerr << "Offset post-computation: " << offset << "\n";
+
+        return ret;  // Implicitly converted to varint.
     }
 
     vector<ubyte> unsigned_varint_t::encode() const{
