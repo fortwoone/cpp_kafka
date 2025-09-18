@@ -30,35 +30,21 @@ namespace cpp_kafka{
             auto& last_batch = ret.emplace_back();
             cerr << "Created a new record batch\n";
             last_batch.base_offset = read_be_and_advance<flong>(buf, offset);
-            cerr << "Read base offset: " << last_batch.base_offset << "\n";
             last_batch.batch_length = read_be_and_advance<fint>(buf, offset);
-            cerr << "Read batch length: " << last_batch.batch_length << "\n";
             last_batch.partition_leader_epoch = read_be_and_advance<uint>(buf, offset);
-            cerr << "Read partition leader epoch: " << last_batch.partition_leader_epoch << "\n";
             last_batch.magic = read_be_and_advance<ubyte>(buf, offset);
-            cerr << "Read magic byte\n";
             last_batch.crc_checksum = read_be_and_advance<fint>(buf, offset);
-            cerr << "Read CRC checksum: " << std::hex << last_batch.crc_checksum << std::dec << "\n";
             last_batch.attributes = read_be_and_advance<fshort>(buf, offset);
-            cerr << "Read batch attributes: " << last_batch.attributes << "\n";
             last_batch.last_offset_delta = read_be_and_advance<fint>(buf, offset);
-            cerr << "Read last offset delta: " << last_batch.last_offset_delta << "\n";
             last_batch.base_timestamp = read_be_and_advance<flong>(buf, offset);
-            cerr << "Read base timestamp: " << last_batch.base_timestamp << "\n";
             last_batch.max_timestamp = read_be_and_advance<flong>(buf, offset);
-            cerr << "Read max timestamp: " << last_batch.max_timestamp << "\n";
             last_batch.producer_id = read_be_and_advance<flong>(buf, offset);
-            cerr << "Read producer ID: " << last_batch.producer_id << "\n";
             last_batch.producer_epoch = read_be_and_advance<fshort>(buf, offset);
-            cerr << "Read producer epoch: " << last_batch.producer_epoch << "\n";
             last_batch.base_sequence = read_be_and_advance<fint>(buf, offset);
-            cerr << "Read base sequence: " << last_batch.base_sequence << "\n";
 
             // Extract records.
             record_count = read_be_and_advance<uint>(buf, offset);
-            cerr << "Read record count: " << std::hex << record_count << std::dec << "\n",
             last_batch.records.resize(record_count);
-            cerr << "Resized record vector\n";
             for (auto& rec_ref : last_batch.records){
                 rec_ref.length = varint_t::decode_and_advance(buf, offset);
                 cerr << "Read record length: " << static_cast<ushort>(rec_ref.length) << "\n";
