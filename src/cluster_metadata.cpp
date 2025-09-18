@@ -163,6 +163,8 @@ namespace cpp_kafka{
                         }
                         offset++;  // Jump one byte ahead to avoid reading incorrect values.
                         cerr << std::dec << "\n";
+
+                        // Encoded as a varint, so we need to deduce 1 from this value.
                         auto repl_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
                         cerr << "Replica array size: " << static_cast<uint>(repl_arr_size) << "\n";
                         part_payload.replica_nodes.resize(static_cast<uint>(repl_arr_size));
@@ -178,7 +180,8 @@ namespace cpp_kafka{
                             }
                         }
 
-                        auto isr_arr_size = unsigned_varint_t::decode_and_advance(buf, offset);
+                        // Encoded as a varint, so we need to deduce 1 from this value.
+                        auto isr_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
                         cerr << "ISR array size: " << static_cast<uint>(isr_arr_size) << "\n";
                         part_payload.isr_nodes.resize(static_cast<uint>(isr_arr_size));
                         cerr << "ISR nodes: (" << std::hex;
@@ -193,6 +196,7 @@ namespace cpp_kafka{
                             }
                         }
 
+                        // Encoded as a varint, so we need to deduce 1 from this value.
                         auto rem_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
                         cerr << "Removing replicas array size: " << static_cast<uint>(rem_arr_size) << "\n";
                         part_payload.rem_replicas.resize(static_cast<uint>(rem_arr_size));
@@ -208,6 +212,7 @@ namespace cpp_kafka{
                             }
                         }
 
+                        // Encoded as a varint, so we need to deduce 1 from this value.
                         auto add_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
                         cerr << "Adding replicas array size: " << static_cast<uint>(add_arr_size) << "\n";
                         part_payload.add_replicas.resize(static_cast<uint>(add_arr_size));
