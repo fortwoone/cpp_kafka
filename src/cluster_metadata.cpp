@@ -83,7 +83,7 @@ namespace cpp_kafka{
                 cerr << "Value length: " << static_cast<fint>(rec_ref.value_length) << "\n";
                 // Parse the payload header.
                 auto& rec_header = rec_ref.header;
-                rec_header.frame_ver = read_be_and_advance<fbyte>(buf, offset);
+                rec_header.frame_ver = read_and_advance<fbyte>(buf, offset);
                 cerr << "Read frame version: " << static_cast<fshort>(rec_header.frame_ver) << "\n";
                 rec_header.type = read_be_and_advance<fbyte>(buf, offset);
                 cerr << "Read type: " << std::hex << static_cast<fshort>(rec_header.type) << std::dec << "\n";
