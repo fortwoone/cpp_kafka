@@ -70,7 +70,19 @@ namespace cpp_kafka{
                 return varint_t(value << static_cast<fint>(val));
             }
 
-//            [[nodiscard]] size_t needed_size() const;
+            [[nodiscard]] ssize_t needed_size() const{
+                uint as_unsigned = (static_cast<uint>(value) << 1) ^ (static_cast<uint>(value) >> 31);
+                ssize_t size = 0;
+                do {
+                    as_unsigned >>= 7;
+                    size++;
+                } while (as_unsigned != 0);
+
+                if (size == 0) {
+                    return 1;
+                }
+                return size;
+            }
             [[nodiscard]] static varint_t decode_and_advance(char* buf, ssize_t& offset);
             [[nodiscard]] vector<ubyte> encode() const;
     };
@@ -130,7 +142,15 @@ namespace cpp_kafka{
                 return unsigned_varint_t(value << static_cast<uint>(val));
             }
 
-//            [[nodiscard]] size_t needed_size() const;
+            [[nodiscard]] size_t needed_size() const{
+                uint copied = value;
+                size_t size = 0;
+                do {
+                    copied >>= 7;
+                    size++;
+                } while (copied > 0);
+                return size;
+            }
             [[nodiscard]] static unsigned_varint_t decode_and_advance(char* buf, ssize_t& offset);
             [[nodiscard]] vector<ubyte> encode() const;
     };
