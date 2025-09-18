@@ -70,8 +70,8 @@ namespace cpp_kafka{
                 cerr << "Read offset delta: " << static_cast<fint>(rec_ref.offset_delta) << "\n";
                 rec_ref.key_length = varint_t::decode_and_advance(buf, offset);
                 cerr << "Read key length: " << static_cast<fint>(rec_ref.key_length) << "\n";
-                if (rec_ref.key_length > -1) {
-                    // Do not perform this if the key is null.
+                if (rec_ref.key_length > 0) {
+                    // Do not perform this if the key is null or the key length is equal to 0.
                     rec_ref.key.resize(static_cast<uint>(rec_ref.key_length));
                     cerr << "Resized key string\n";
                     for (char& key_idx: rec_ref.key) {
