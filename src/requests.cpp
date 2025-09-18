@@ -288,13 +288,13 @@ namespace cpp_kafka{
             req_topic_obj.data.insert(
                 req_topic_obj.data.end(),
                 buffer + offset_for_next_topic,
-                buffer + offset_for_next_topic + string_name_length - 1
+                buffer + offset_for_next_topic + static_cast<ssize_t>(string_name_length - 1)
             );
             // Account for the tag buffer (one empty byte).
-            offset_for_next_topic += string_name_length + 1;
+            offset_for_next_topic += static_cast<ssize_t>(string_name_length + 1);
         }
 
-        auto max_part_count_pos = starting_point + offset_for_next_topic;
+        auto max_part_count_pos = offset_for_next_topic;
 
         auto max_part_count = read_big_endian<fint>(buffer + max_part_count_pos);
         auto cursor = read_big_endian<fbyte>(buffer + max_part_count_pos + sizeof(fint));
