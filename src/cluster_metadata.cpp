@@ -123,6 +123,8 @@ namespace cpp_kafka{
                         }
                         cerr << "Topic name: " << tr_payload.name << "\n";
 
+                        offset++;  // Jump one byte ahead to avoid reading incorrect UUIDs.
+
                         // Extract topic's UUID.
                         for (ubyte k = 0; k < 16; ++k){
                             if (k == 5){
@@ -131,7 +133,6 @@ namespace cpp_kafka{
                             }
                             tr_payload.uuid[k] = read_and_advance<ubyte>(buf, offset);
                         }
-                        offset++;  // Jump one byte ahead to avoid reading incorrect values.
 
                         cerr << "Topic UUID: " << std::hex;
                         for (const auto& i: tr_payload.uuid){
@@ -152,6 +153,7 @@ namespace cpp_kafka{
                         part_payload.partition_id = read_be_and_advance<fint>(buf, offset);
                         cerr << "Partition ID: " << part_payload.partition_id << "\n";
                         cerr << "Topic UUID: " << std::hex;
+                        offset++;  // Jump one byte ahead before reading to avoid reading incorrect values.
                         for (ubyte k = 0; k < 16; ++k){
                             if (k == 5){
                                 part_payload.topic_uuid[k] = part_payload.topic_uuid[k - 1];
@@ -161,7 +163,6 @@ namespace cpp_kafka{
                             part_payload.topic_uuid[k] = read_and_advance<ubyte>(buf, offset);
                             cerr << static_cast<uint>(part_payload.topic_uuid[k]) << " ";
                         }
-                        offset++;  // Jump one byte ahead to avoid reading incorrect values.
                         cerr << std::dec << "\n";
 
                         // Encoded as a varint, so we need to deduce 1 from this value.
@@ -239,6 +240,7 @@ namespace cpp_kafka{
                         part_payload.directory_uuids.resize(static_cast<uint>(dir_arr_size));
                         cerr << "Directory UUIDs: (\n" << std::hex;
                         for (auto& itm: part_payload.directory_uuids){
+                            offset++;  // Jump one byte ahead to avoid reading incorrect values.
                             for (ubyte k = 0; k < 16; ++k){
                                 if (k == 5){
                                     itm[k] = itm[k - 1];
@@ -249,7 +251,6 @@ namespace cpp_kafka{
                                 cerr << static_cast<uint>(itm[k]) << " ";
                             }
                             cerr << "\n";
-                            offset++;  // Jump one byte ahead to avoid reading incorrect values.
                         }
                         cerr << std::dec << ")" << "\n";
                         auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);
