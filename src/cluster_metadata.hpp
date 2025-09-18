@@ -54,7 +54,7 @@ namespace cpp_kafka{
         varint_t offset_delta;
         varint_t key_length;
         string key;
-        varint_t value_length;
+        unsigned_varint_t value_length;
         PayloadHeader header;
         variant<FeatureLevelPayload, TopicPayload, PartitionPayload> payload;
 
