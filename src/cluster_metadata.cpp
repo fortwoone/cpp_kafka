@@ -66,7 +66,7 @@ namespace cpp_kafka{
                 rec_ref.attributes = read_be_and_advance<ubyte>(buf, offset);
                 cerr << "Read record attributes: " << std::hex << rec_ref.attributes << std::dec << "\n";
                 rec_ref.timestamp_delta = read_be_and_advance<fbyte>(buf, offset);
-                cerr << "Read timestamp delta: " << rec_ref.timestamp_delta << "\n";
+                cerr << "Read timestamp delta: " << std::hex << rec_ref.timestamp_delta << std::dec << "\n";
                 rec_ref.offset_delta = read_be_and_advance<fbyte>(buf, offset);
                 cerr << "Read offset delta: " << rec_ref.offset_delta << "\n";
                 rec_ref.key_length = read_be_and_advance<fbyte>(buf, offset);
