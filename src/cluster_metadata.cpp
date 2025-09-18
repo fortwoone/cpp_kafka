@@ -75,7 +75,9 @@ namespace cpp_kafka{
                 for (char& key_idx : rec_ref.key){
                     key_idx = read_and_advance<char>(buf, offset);
                 }
+                cerr << "Key string: " << rec_ref.key << "\n";
                 rec_ref.value_length = varint_t::decode_and_advance(buf, offset);
+                cerr << "Value length: " << static_cast<uint>(rec_ref.value_length) << "\n";
                 // Parse the payload header.
                 auto& rec_header = rec_ref.header;
                 rec_header.frame_ver = read_be_and_advance<fbyte>(buf, offset);
