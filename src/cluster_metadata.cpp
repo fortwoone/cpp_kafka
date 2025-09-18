@@ -112,7 +112,8 @@ namespace cpp_kafka{
                     case 0x02: // Topic record
                     {
                         cerr << "Topic record\n";
-                        auto& tr_payload = std::get<TopicPayload>(rec_ref.payload);
+                        // We need to replace the held value, as it is a FeatureLevelPayload by default.
+                        auto& tr_payload = rec_ref.payload.emplace<TopicPayload>();
 
                         unsigned_varint_t name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
                         cerr << "Name length: " << static_cast<uint>(name_length) << "\n";
@@ -143,7 +144,9 @@ namespace cpp_kafka{
                     case 0x03:  // Partition record
                     {
                         cerr << "Partition record\n";
-                        auto& part_payload = std::get<PartitionPayload>(rec_ref.payload);
+                        // We need to replace the held value, as it is a FeatureLevelPayload by default.
+                        auto& part_payload = rec_ref.payload.emplace<PartitionPayload>();
+
                         part_payload.partition_id = read_be_and_advance<fint>(buf, offset);
                         cerr << "Partition ID: " << part_payload.partition_id << "\n";
                         cerr << "Topic UUID: " << std::hex;
