@@ -26,12 +26,8 @@ namespace cpp_kafka{
                 throw runtime_error("Encoded value is too large for a VARINT.");
             }
         }
-        cerr << "Value before decoding: " << value << "\n";
         fint decoded_value = (value >> 1) ^ (-(value & 1));
-        cerr << "Decoded value: " << decoded_value << "\n";
-        cerr << "Offset pre-computation: " << offset << "\n";
         offset += count;
-        cerr << "Offset post-computation: " << offset << "\n";
         return decoded_value;
     }
 
@@ -76,14 +72,9 @@ namespace cpp_kafka{
                 throw runtime_error("Encoded value is too large for an UNSIGNED_VARINT.");
             }
         }
-
-        auto ret = unsigned_varint_t(value);
-        cerr << "Offset pre-computation: " << offset << "\n";
-        cerr << "Decoded value required size: "<< ret.needed_size() << "\n";
         offset += count;
-        cerr << "Offset post-computation: " << offset << "\n";
 
-        return ret;  // Implicitly converted to varint.
+        return value;  // Implicitly converted to unsigned varint.
     }
 
     vector<ubyte> unsigned_varint_t::encode() const{
