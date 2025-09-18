@@ -93,26 +93,34 @@ namespace cpp_kafka{
                 switch (rec_header.type){
                     case 0x0C: // Feature level record
                     {
+                        cerr << "Feature level payload\n";
                         auto& fl_payload = std::get<FeatureLevelPayload>(rec_ref.payload);
                         auto name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
+                        cerr << "Read feature name length: " << static_cast<uint>(name_length) << "\n";
 
                         fl_payload.name.resize(static_cast<uint>(name_length));
+                        cerr << "Resized name string\n";
                         for (ubyte i = 0; i < name_length; ++i){
                             fl_payload.name.at(i) = read_and_advance<char>(buf, offset);
                         }
+                        cerr << "Feature name: " << fl_payload.name << "\n";
                         fl_payload.feature_level = read_be_and_advance<fshort>(buf, offset);
+                        cerr << "Feature level: " << fl_payload.feature_level << "\n";
                         auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);  // Extract this so we can skip it and get to the next record.
                         break;
                     }
                     case 0x02: // Topic record
                     {
+                        cerr << "Topic record\n";
                         auto& tr_payload = std::get<TopicPayload>(rec_ref.payload);
 
                         unsigned_varint_t name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
+                        cerr << "Name length: " << static_cast<uint>(name_length) << "\n";
                         tr_payload.name.resize(static_cast<uint>(name_length));
                         for (ubyte i = 0; i < name_length; ++i){
                             tr_payload.name.at(i) = read_and_advance<char>(buf, offset);
                         }
+                        cerr << "Topic name: " << tr_payload.name << "\n";
 
                         // Extract topic's UUID.
                         for (ubyte k = 0; k < 16; ++k){
@@ -123,59 +131,115 @@ namespace cpp_kafka{
                             tr_payload.uuid[k] = read_and_advance<ubyte>(buf, offset);
                         }
 
+                        cerr << "Topic UUID: " << std::hex;
+                        for (const auto& i: tr_payload.uuid){
+                            cerr << static_cast<uint>(i) << " ";
+                        }
+                        cerr << std::dec << "\n";
+
                         auto tagged_fields_count = unsigned_varint_t::decode_and_advance(buf, offset);
                         break;
                     }
                     case 0x03:  // Partition record
                     {
+                        cerr << "Partition record\n";
                         auto& part_payload = std::get<PartitionPayload>(rec_ref.payload);
                         part_payload.partition_id = read_be_and_advance<fint>(buf, offset);
+                        cerr << "Partition ID: " << part_payload.partition_id << "\n";
+                        cerr << "Topic UUID: " << std::hex;
                         for (ubyte k = 0; k < 16; ++k){
                             if (k == 5){
                                 part_payload.topic_uuid[k] = part_payload.topic_uuid[k - 1];
+                                cerr << static_cast<uint>(part_payload.topic_uuid[k]) << " ";
                                 continue;
                             }
                             part_payload.topic_uuid[k] = read_and_advance<ubyte>(buf, offset);
+                            cerr << static_cast<uint>(part_payload.topic_uuid[k]) << " ";
                         }
+                        cerr << std::dec << "\n";
                         auto repl_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                        cerr << "Replica array size: " << static_cast<uint>(repl_arr_size) << "\n";
                         part_payload.replica_nodes.resize(static_cast<uint>(repl_arr_size));
+                        cerr << "Replica nodes: (" << std::hex;
                         for (ubyte i = 0; i < repl_arr_size; ++i){
                             part_payload.replica_nodes.at(i) = read_be_and_advance<fint>(buf, offset);
+                            cerr << part_payload.replica_nodes[i];
+                            if (i < (repl_arr_size - 1)){
+                                cerr << ", ";
+                            }
+                            else{
+                                cerr << std::dec << ")\n";
+                            }
                         }
 
                         auto isr_arr_size = unsigned_varint_t::decode_and_advance(buf, offset);
+                        cerr << "ISR array size: " << static_cast<uint>(isr_arr_size) << "\n";
                         part_payload.isr_nodes.resize(static_cast<uint>(isr_arr_size));
+                        cerr << "ISR nodes: (" << std::hex;
                         for (ubyte i = 0; i < isr_arr_size; ++i){
                             part_payload.isr_nodes.at(i) = read_be_and_advance<fint>(buf, offset);
+                            cerr << part_payload.isr_nodes[i];
+                            if (i < (isr_arr_size - 1)){
+                                cerr << ", ";
+                            }
+                            else{
+                                cerr << std::dec << ")\n";
+                            }
                         }
 
                         auto rem_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                        cerr << "Removing replicas array size: " << static_cast<uint>(rem_arr_size) << "\n";
                         part_payload.rem_replicas.resize(static_cast<uint>(rem_arr_size));
+                        cerr << "Rem. replica nodes: (" << std::hex;
                         for (ubyte i = 0; i < rem_arr_size; ++i){
                             part_payload.rem_replicas.at(i) = read_be_and_advance<fint>(buf, offset);
+                            cerr << part_payload.rem_replicas[i];
+                            if (i < (rem_arr_size - 1)){
+                                cerr << ", ";
+                            }
+                            else{
+                                cerr << std::dec << ")\n";
+                            }
                         }
 
                         auto add_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                        cerr << "Adding replicas array size: " << static_cast<uint>(add_arr_size) << "\n";
                         part_payload.add_replicas.resize(static_cast<uint>(add_arr_size));
                         for (ubyte i = 0; i < add_arr_size; ++i){
                             part_payload.add_replicas.at(i) = read_be_and_advance<fint>(buf, offset);
+                            cerr << part_payload.rem_replicas[i];
+                            if (i < (rem_arr_size - 1)){
+                                cerr << ", ";
+                            }
+                            else{
+                                cerr << std::dec << ")\n";
+                            }
                         }
 
                         part_payload.leader_id = read_be_and_advance<uint>(buf, offset);
+                        cerr << "Partition leader ID: " << part_payload.leader_id << "\n";
                         part_payload.leader_epoch = read_be_and_advance<uint>(buf, offset);
+                        cerr << "Partition leader epoch: " << part_payload.leader_epoch << "\n";
                         part_payload.part_epoch = read_be_and_advance<uint>(buf, offset);
+                        cerr << "Partition epoch: " << part_payload.leader_id << "\n";
 
                         auto dir_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                        cerr << "Directory array size: " << static_cast<uint>(dir_arr_size) << "\n";
                         part_payload.directory_uuids.resize(static_cast<uint>(dir_arr_size));
+                        cerr << "Directory UUIDs: (\n" << std::hex;
                         for (auto& itm: part_payload.directory_uuids){
                             for (ubyte k = 0; k < 16; ++k){
                                 if (k == 5){
                                     itm[k] = itm[k - 1];
+                                    cerr << static_cast<uint>(itm[k]) << " ";
                                     continue;
                                 }
                                 itm[k] = read_and_advance<ubyte>(buf, offset);
+                                cerr << static_cast<uint>(itm[k]) << " ";
                             }
+                            cerr << "\n";
                         }
+                        cerr << std::dec << ")" << "\n";
                         auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);
                         break;
                     }
