@@ -21,7 +21,7 @@ namespace cpp_kafka{
                 break;
             }
             shift += 7;
-            if (shift >= 35){
+            if (shift >= 32){
                 throw runtime_error("Encoded value is too large for a VARINT.");
             }
             count++;

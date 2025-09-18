@@ -68,7 +68,7 @@ namespace cpp_kafka{
                 cerr << "Read timestamp delta: " << std::hex << static_cast<fint>(rec_ref.timestamp_delta) << std::dec << "\n";
                 rec_ref.offset_delta = varint_t::decode_and_advance(buf, offset);
                 cerr << "Read offset delta: " << static_cast<fint>(rec_ref.offset_delta) << "\n";
-                rec_ref.key_length = unsigned_varint_t::decode_and_advance(buf, offset);
+                rec_ref.key_length = varint_t::decode_and_advance(buf, offset);
                 cerr << "Read key length: " << static_cast<fint>(rec_ref.key_length) << "\n";
                 if (rec_ref.key_length > -1) {
                     // Do not perform this if the key is null.
