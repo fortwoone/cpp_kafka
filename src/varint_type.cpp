@@ -12,7 +12,6 @@ namespace cpp_kafka{
         ubyte count = 0;
 
         while (true){
-            cerr << "Count: " << static_cast<ushort>(count) << "\n";
             memcpy(&byte, buf + offset + count, 1);
             value |= (byte & 0x7F) << shift;
             count++;
@@ -57,7 +56,6 @@ namespace cpp_kafka{
         ubyte count = 0;
 
         while (true){
-            cerr << "Count: " << count << "\n";
             memcpy(&byte, buf + offset + count, 1);
             value |= (byte & 0x7F) << shift;
             count++;
