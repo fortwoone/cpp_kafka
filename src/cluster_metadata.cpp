@@ -60,8 +60,10 @@ namespace cpp_kafka{
             last_batch.records.resize(record_count);
             cerr << "Resized record vector\n";
             for (auto& rec_ref : last_batch.records){
+                cerr << "Offset before reading record length: " << offset << "\n";
                 rec_ref.length = varint_t::decode_and_advance(buf, offset);
                 cerr << "Read record length: " << static_cast<ushort>(rec_ref.length) << "\n";
+                cerr << "Offset after reading record length: " << offset << "\n";
                 rec_ref.attributes = read_be_and_advance<ubyte>(buf, offset);
                 cerr << "Read record attributes: " << std::hex << rec_ref.attributes << std::dec << "\n";
                 rec_ref.timestamp_delta = varint_t::decode_and_advance(buf, offset);
