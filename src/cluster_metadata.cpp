@@ -84,8 +84,11 @@ namespace cpp_kafka{
                 // Parse the payload header.
                 auto& rec_header = rec_ref.header;
                 rec_header.frame_ver = read_be_and_advance<fbyte>(buf, offset);
+                cerr << "Read frame version: " << static_cast<fshort>(rec_header.frame_ver) << "\n";
                 rec_header.type = read_be_and_advance<fbyte>(buf, offset);
+                cerr << "Read type: " << std::hex << static_cast<fshort>(rec_header.type) << std::dec << "\n";
                 rec_header.version = read_be_and_advance<fbyte>(buf, offset);
+                cerr << "Read field version: " << std::hex << static_cast<fshort>(rec_header.type) << std::dec << "\n";
 
                 switch (rec_header.type){
                     case 0x0C: // Feature level record
