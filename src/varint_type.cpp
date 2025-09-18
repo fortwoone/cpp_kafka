@@ -15,6 +15,7 @@ namespace cpp_kafka{
             cerr << "Count: " << static_cast<ushort>(count) << "\n";
             memcpy(&byte, buf + offset + count, 1);
             value |= (byte & 0x7F) << shift;
+            count++;
 
             if (!(byte & 0x80)){
                 // Stop reading if no more bytes follow for this varint.
@@ -24,15 +25,12 @@ namespace cpp_kafka{
             if (shift >= 32){
                 throw runtime_error("Encoded value is too large for a VARINT.");
             }
-            count++;
         }
         cerr << "Value before decoding: " << value << "\n";
         fint decoded_value = (value >> 1) ^ (-(value & 1));
         cerr << "Decoded value: " << decoded_value << "\n";
-        auto ret = varint_t(decoded_value);
         cerr << "Offset pre-computation: " << offset << "\n";
-        cerr << "Decoded value required size: "<< ret.needed_size() << "\n";
-        offset += ret.needed_size();
+        offset += count;
         cerr << "Offset post-computation: " << offset << "\n";
         return decoded_value;
     }
@@ -63,8 +61,10 @@ namespace cpp_kafka{
         ubyte count = 0;
 
         while (true){
+            cerr << "Count: " << count << "\n";
             memcpy(&byte, buf + offset + count, 1);
             value |= (byte & 0x7F) << shift;
+            count++;
 
             if (!(byte & 0x80)){
                 // Stop reading if no more bytes follow for this varint.
@@ -75,13 +75,12 @@ namespace cpp_kafka{
             if (shift >= 32){
                 throw runtime_error("Encoded value is too large for an UNSIGNED_VARINT.");
             }
-            count++;
         }
 
         auto ret = unsigned_varint_t(value);
         cerr << "Offset pre-computation: " << offset << "\n";
         cerr << "Decoded value required size: "<< ret.needed_size() << "\n";
-        offset += ret.needed_size();
+        offset += count;
         cerr << "Offset post-computation: " << offset << "\n";
 
         return ret;  // Implicitly converted to varint.
