@@ -246,6 +246,9 @@ namespace cpp_kafka{
                         auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);
                         break;
                     }
+                    default:
+                        cerr << "Invalid type: 0x" << std::hex << rec_header.type << std::dec << "\n";
+                        throw runtime_error("Unsupported record type.");
                 }
                 auto header_count = unsigned_varint_t::decode_and_advance(buf, offset);
             }
