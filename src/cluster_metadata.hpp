@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "utils.hpp"
+#include "varint_type.hpp"
 
 namespace cpp_kafka{
     using std::holds_alternative;
@@ -47,13 +48,13 @@ namespace cpp_kafka{
     };
 
     struct Record{
-        fbyte length;
+        varint_t length;
         ubyte attributes;
-        fbyte timestamp_delta;
-        fbyte offset_delta;
-        fbyte key_length;
+        varint_t timestamp_delta;
+        varint_t offset_delta;
+        varint_t key_length;
         string key;
-        fbyte value_length;
+        varint_t value_length;
         PayloadHeader header;
         variant<FeatureLevelPayload, TopicPayload, PartitionPayload> payload;
 

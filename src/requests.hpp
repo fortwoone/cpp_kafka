@@ -15,6 +15,7 @@
 
 #include "utils.hpp"
 #include "cluster_metadata.hpp"
+#include "varint_type.hpp"
 
 namespace cpp_kafka{
     using std::array;

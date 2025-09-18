@@ -59,24 +59,23 @@ namespace cpp_kafka{
             cerr << "Read record count: " << std::hex << record_count << std::dec << "\n",
             last_batch.records.resize(record_count);
             cerr << "Resized record vector\n";
-            for (size_t rec_idx = 0; rec_idx < last_batch.records.size(); ++rec_idx){
-                auto& rec_ref = last_batch.records.at(rec_idx);
-                rec_ref.length = read_be_and_advance<fbyte>(buf, offset);
-                cerr << "Read record length: " << rec_ref.length << "\n";
+            for (auto& rec_ref : last_batch.records){
+                rec_ref.length = varint_t::decode_and_advance(buf, offset);
+                cerr << "Read record length: " << static_cast<ushort>(rec_ref.length) << "\n";
                 rec_ref.attributes = read_be_and_advance<ubyte>(buf, offset);
                 cerr << "Read record attributes: " << std::hex << rec_ref.attributes << std::dec << "\n";
                 rec_ref.timestamp_delta = read_be_and_advance<fbyte>(buf, offset);
-                cerr << "Read timestamp delta: " << std::hex << rec_ref.timestamp_delta << std::dec << "\n";
+                cerr << "Read timestamp delta: " << std::hex << static_cast<fint>(rec_ref.timestamp_delta) << std::dec << "\n";
                 rec_ref.offset_delta = read_be_and_advance<fbyte>(buf, offset);
-                cerr << "Read offset delta: " << rec_ref.offset_delta << "\n";
-                rec_ref.key_length = read_be_and_advance<fbyte>(buf, offset);
-                cerr << "Read key length: " << rec_ref.key_length << "\n";
-                rec_ref.key.resize(rec_ref.key_length);
+                cerr << "Read offset delta: " << static_cast<fint>(rec_ref.offset_delta) << "\n";
+                rec_ref.key_length = varint_t::decode_and_advance(buf, offset);
+                cerr << "Read key length: " << static_cast<uint>(rec_ref.key_length) << "\n";
+                rec_ref.key.resize(static_cast<uint>(rec_ref.key_length));
                 cerr << "Resized key string\n";
-                for (size_t key_idx = 0; key_idx < rec_ref.key.size(); ++key_idx){
-                    rec_ref.key.at(key_idx) = read_and_advance<char>(buf, offset);
+                for (char& key_idx : rec_ref.key){
+                    key_idx = read_and_advance<char>(buf, offset);
                 }
-                rec_ref.value_length = read_be_and_advance<fbyte>(buf, offset);
+                rec_ref.value_length = varint_t::decode_and_advance(buf, offset);
                 // Parse the payload header.
                 auto& rec_header = rec_ref.header;
                 rec_header.frame_ver = read_be_and_advance<fbyte>(buf, offset);
@@ -87,23 +86,22 @@ namespace cpp_kafka{
                     case 0x0C: // Feature level record
                     {
                         auto& fl_payload = std::get<FeatureLevelPayload>(rec_ref.payload);
-                        ubyte name_length = read_be_and_advance<ubyte>(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
+                        auto name_length = varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
 
-                        fl_payload.name.resize(name_length);
+                        fl_payload.name.resize(static_cast<uint>(name_length));
                         for (ubyte i = 0; i < name_length; ++i){
                             fl_payload.name.at(i) = read_and_advance<char>(buf, offset);
                         }
                         fl_payload.feature_level = read_be_and_advance<fshort>(buf, offset);
-                        ubyte tagged_count = read_be_and_advance<ubyte>(buf, offset);  // Extract this so we can skip it and get to the next record.
+                        auto tagged_count = varint_t::decode_and_advance(buf, offset);  // Extract this so we can skip it and get to the next record.
                         break;
                     }
                     case 0x02: // Topic record
                     {
                         auto& tr_payload = std::get<TopicPayload>(rec_ref.payload);
 
-                        ubyte name_length = read_be_and_advance<ubyte>(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
-                        name_length--;
-                        tr_payload.name.resize(name_length);
+                        varint_t name_length = varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
+                        tr_payload.name.resize(static_cast<uint>(name_length));
                         for (ubyte i = 0; i < name_length; ++i){
                             tr_payload.name.at(i) = read_and_advance<char>(buf, offset);
                         }
@@ -117,7 +115,7 @@ namespace cpp_kafka{
                             tr_payload.uuid[k] = read_and_advance<ubyte>(buf, offset);
                         }
 
-                        ubyte tagged_fields_count = read_and_advance<ubyte>(buf, offset);
+                        auto tagged_fields_count = varint_t::decode_and_advance(buf, offset);
                         break;
                     }
                     case 0x03:  // Partition record
@@ -131,26 +129,26 @@ namespace cpp_kafka{
                             }
                             part_payload.topic_uuid[k] = read_and_advance<ubyte>(buf, offset);
                         }
-                        ubyte repl_arr_size = read_and_advance<ubyte>(buf, offset) - 1;
-                        part_payload.replica_nodes.resize(repl_arr_size);
+                        auto repl_arr_size = varint_t::decode_and_advance(buf, offset) - 1;
+                        part_payload.replica_nodes.resize(static_cast<uint>(repl_arr_size));
                         for (ubyte i = 0; i < repl_arr_size; ++i){
                             part_payload.replica_nodes.at(i) = read_be_and_advance<fint>(buf, offset);
                         }
 
-                        ubyte isr_arr_size = read_and_advance<ubyte>(buf, offset);
-                        part_payload.isr_nodes.resize(isr_arr_size);
+                        auto isr_arr_size = varint_t::decode_and_advance(buf, offset);
+                        part_payload.isr_nodes.resize(static_cast<uint>(isr_arr_size));
                         for (ubyte i = 0; i < isr_arr_size; ++i){
                             part_payload.isr_nodes.at(i) = read_be_and_advance<fint>(buf, offset);
                         }
 
-                        ubyte rem_arr_size = read_and_advance<ubyte>(buf, offset) - 1;
-                        part_payload.rem_replicas.resize(rem_arr_size);
+                        auto rem_arr_size = varint_t::decode_and_advance(buf, offset) - 1;
+                        part_payload.rem_replicas.resize(static_cast<uint>(rem_arr_size));
                         for (ubyte i = 0; i < rem_arr_size; ++i){
                             part_payload.rem_replicas.at(i) = read_be_and_advance<fint>(buf, offset);
                         }
 
-                        ubyte add_arr_size = read_and_advance<ubyte>(buf, offset) - 1;
-                        part_payload.add_replicas.resize(add_arr_size);
+                        auto add_arr_size = varint_t::decode_and_advance(buf, offset) - 1;
+                        part_payload.add_replicas.resize(static_cast<uint>(add_arr_size));
                         for (ubyte i = 0; i < add_arr_size; ++i){
                             part_payload.add_replicas.at(i) = read_be_and_advance<fint>(buf, offset);
                         }
@@ -159,8 +157,8 @@ namespace cpp_kafka{
                         part_payload.leader_epoch = read_be_and_advance<uint>(buf, offset);
                         part_payload.part_epoch = read_be_and_advance<uint>(buf, offset);
 
-                        ubyte dir_arr_size = read_and_advance<ubyte>(buf, offset) - 1;
-                        part_payload.directory_uuids.resize(add_arr_size);
+                        auto dir_arr_size = varint_t::decode_and_advance(buf, offset) - 1;
+                        part_payload.directory_uuids.resize(static_cast<uint>(dir_arr_size));
                         for (auto& itm: part_payload.directory_uuids){
                             for (ubyte k = 0; k < 16; ++k){
                                 if (k == 5){
@@ -170,11 +168,11 @@ namespace cpp_kafka{
                                 itm[k] = read_and_advance<ubyte>(buf, offset);
                             }
                         }
-                        ubyte tagged_count = read_and_advance<ubyte>(buf, offset);
+                        auto tagged_count = varint_t::decode_and_advance(buf, offset);
                         break;
                     }
                 }
-                fbyte header_count = read_and_advance<fbyte>(buf, offset);
+                auto header_count = varint_t::decode_and_advance(buf, offset);
             }
         }
         close(fd);
