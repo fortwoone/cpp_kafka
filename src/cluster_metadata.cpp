@@ -249,6 +249,7 @@ namespace cpp_kafka{
                                 cerr << static_cast<uint>(itm[k]) << " ";
                             }
                             cerr << "\n";
+                            offset++;  // Jump one byte ahead to avoid reading incorrect values.
                         }
                         cerr << std::dec << ")" << "\n";
                         auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);
