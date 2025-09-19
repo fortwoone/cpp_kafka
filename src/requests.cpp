@@ -308,6 +308,7 @@ namespace cpp_kafka{
             response.append(host_to_network_short(to_underlying(KafkaErrorCode::UNSUPPORTED_VERSION))); // Error code
         }
         else{
+            cerr << "Retrieving data\n";
             vector<Topic> topic_entries = retrieve_data(requested_topics);
 
             response.append(static_cast<fint>(0));                              // Throttle time
