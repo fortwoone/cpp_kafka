@@ -279,30 +279,23 @@ namespace cpp_kafka{
         ssize_t moved_offset = starting_point;
         // Since this is an array size, we need to deduce 1 from it.
         auto req_topic_arr_len = unsigned_varint_t::decode_and_advance(buffer, moved_offset) - 1;
-        cerr << "Requested topic array length: " << static_cast<fint>(req_topic_arr_len) << "\n";
         requested_topics.resize(static_cast<ssize_t>(req_topic_arr_len));  // Create empty elements from the start so it is easier to edit them.
 
         ssize_t offset_for_next_topic = starting_point + 1;
         for (fbyte i = 0; i < req_topic_arr_len; ++i){
-            cerr << "Original offset: " << offset_for_next_topic << "\n";
             auto string_name_length = unsigned_varint_t::decode_and_advance(buffer, offset_for_next_topic) - 1;
-            cerr << "Insert topic name into string\n";
-            cerr << "String name length: " << static_cast<uint>(string_name_length) << "\n";
             auto& req_topic_obj = requested_topics.at(i);
             req_topic_obj.data.insert(
                 req_topic_obj.data.end(),
                 buffer + offset_for_next_topic,
                 buffer + offset_for_next_topic + static_cast<ssize_t>(string_name_length)
             );
-            cerr << "Extracted name: " << req_topic_obj.data << "\n";
             // Account for the tag buffer (one empty byte).
-            cerr << "Offset with calculation: " << offset_for_next_topic + static_cast<ssize_t>(string_name_length) + 1 << "\n";
             offset_for_next_topic += static_cast<ssize_t>(string_name_length) + 1;
         }
 
         auto max_part_count_pos = offset_for_next_topic;
 
-        cerr << "Reading max. part count\n";
         auto max_part_count = read_big_endian<fint>(buffer + max_part_count_pos);
         auto cursor = read_big_endian<fbyte>(buffer + max_part_count_pos + sizeof(fint));
 
