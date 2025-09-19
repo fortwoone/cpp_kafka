@@ -46,6 +46,7 @@ namespace cpp_kafka{
 
     using TopicUUID = array<ubyte, 16>;
 #if __cplusplus >= 202302L
+    // Use std::byteswap if it exists.
     using std::byteswap;
 # else
     using std::vector;
@@ -77,6 +78,7 @@ namespace cpp_kafka{
     }
 
     enum class KafkaAPIKey: fshort{
+        FETCH = 1,
         API_VERSIONS = 18,
         DESCRIBE_TOPIC_PARTITIONS = 75
     };
