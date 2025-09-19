@@ -79,6 +79,49 @@ namespace cpp_kafka{
         response.append(static_cast<ubyte>(0));                                     // Tag buffer
     }
 
+    void FetchTransaction::append_to_response(Response& response) const{
+        response.append(host_to_network_long(producer_id));
+        response.append(host_to_network_long(first_offset));
+        response.append(tagged_fields);
+    }
+
+    void FetchPartition::append_to_response(Response& response) const{
+        response.append(host_to_network_long(partition_index));
+        response.append(host_to_network_short(to_underlying(err_code)));
+        response.append(high_watermark);
+        response.append(last_stable_offset);
+        response.append(log_start_offset);
+        unsigned_varint_t trans_count = static_cast<uint>(aborted_transactions.size() + 1);
+        for (const ubyte& len_portion: trans_count.encode()){
+            response.append(len_portion);
+        }
+        for (const auto& aborted_trans: aborted_transactions){
+            aborted_trans.append_to_response(response);
+        }
+        response.append(host_to_network_long(preferred_read_replica));
+        unsigned_varint_t rec_count = static_cast<uint>(records.size() + 1);
+        for (const ubyte& len_portion: rec_count.encode()){
+            response.append(len_portion);
+        }
+        for (const auto& rec: records){
+            // Do nothing for now. Will handle this later if necessary.
+        }
+        response.append(static_cast<ubyte>(0));  // Tag buffer
+    }
+
+    void FetchResponsePortion::append_to_response(Response& response) const{
+        for (const auto& p: topic_uuid){
+            response.append(static_cast<ubyte>(p));
+        }
+        unsigned_varint_t part_count = static_cast<uint>(partitions.size() + 1);
+        for (const ubyte& len_portion: part_count.encode()){
+            response.append(len_portion);
+        }
+        for (const auto& partition: partitions){
+            partition.append_to_response(response);
+        }
+    }
+
     // region Request
     fshort Request::get_api_key() const{
         return header.request_api_key;
@@ -329,10 +372,80 @@ namespace cpp_kafka{
         }
     }
 
-    void handle_fetch_request(const Request& request, Response& response){
+    void handle_fetch_request(const Request& request, Response& response, char* buffer){
+        auto cli_id_size = read_big_endian<fshort>(buffer + 12);
+
+        // Calculation details:
+        // 12 bytes from the previous header fields + 2 bytes from the string length + 1 byte for the empty tag buffer = 15 bytes
+        // Then we add the size of the string itself, and this determines where to start parsing the body in the message.
+        uint starting_point = 15 + cli_id_size;
+        ssize_t offset = starting_point;
+
+        // Endian isn't important for now, we'll fix it in later stages if needed.
+        // Besides, none of those fields are actually used for the time being.
+        // We simply store them so we can advance in the buffer nonetheless.
+        auto max_wait_ms = read_and_advance<fint>(buffer, offset);
+        auto min_bytes = read_and_advance<fint>(buffer, offset);
+        auto max_bytes = read_and_advance<fint>(buffer, offset);
+        auto isolation_lv = read_and_advance<fbyte>(buffer, offset);
+
+        // This one IS used though.
+        auto session_id = read_and_advance<fint>(buffer, offset);
+        // ...except not this one.
+        auto session_epoch = read_and_advance<fint>(buffer, offset);
+
+        vector<TopicUUID> requested_uuids;
+        auto req_uuid_size = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
+        requested_uuids.resize(static_cast<uint>(req_uuid_size));
+
+        for (uint i = 0; i < req_uuid_size; ++i){
+            for (ubyte k = 0; k < 16; ++k){
+                if (k == 5){
+                    requested_uuids[i][k] = requested_uuids[i][k - 1];
+                    continue;
+                }
+                requested_uuids[i][k] = read_and_advance<ubyte>(buffer, offset);
+            }
+            auto partition_count = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
+            for (uint part_index = 0; part_index < partition_count; ++part_index){
+                // These variables will end up unused for now, but it might come in handy later.
+                auto partition_index = read_and_advance<fint>(buffer, offset);
+                auto current_leader_epoch = read_and_advance<fint>(buffer, offset);
+                auto fetch_offset = read_and_advance<flong>(buffer, offset);
+                auto last_fetched_epoch = read_and_advance<fint>(buffer, offset);
+                auto log_start_offset = read_and_advance<flong>(buffer, offset);
+                auto partition_max_bytes = read_and_advance<fint>(buffer, offset);
+                auto tagged_field_count = unsigned_varint_t::decode_and_advance(buffer, offset);
+            }
+        }
+
         response.append(static_cast<ubyte>(0)); // Tag buffer (response header v1)
 
+        fshort version = request.get_api_version();
+        if (version > 16){
+            response.append(host_to_network_short(to_underlying(KafkaErrorCode::UNSUPPORTED_VERSION))); // Error code
+            return;
+        }
         vector<FetchResponsePortion> response_portions;
+        response_portions.resize(requested_uuids.size());
+        for (ubyte i = 0; i < requested_uuids.size(); ++i){
+            auto& portion = response_portions.at(i);
+            auto uuid = requested_uuids.at(i);
+            portion.topic_uuid = uuid;
+            portion.partitions.push_back(
+                {
+                    0,
+                    KafkaErrorCode::UNKNOWN_TOPIC_OR_PARTITION,
+                    0,
+                    0,
+                    0,
+                    {},
+                    0,
+                    {}
+                }
+            );
+        }
+
 
         response.append(static_cast<fint>(0));                                                      // Throttle time (ms)
         response.append(host_to_network_short(to_underlying(KafkaErrorCode::NO_ERROR)));            // Error code
@@ -342,9 +455,9 @@ namespace cpp_kafka{
             response.append(len_portion);
         }
         for (const auto& portion: response_portions){
-            // Do nothing for now. We'll handle this later.
+            portion.append_to_response(response);
         }
-        response.append(static_cast<ubyte>(0));                                                     // Tag buffer
+        response.append(static_cast<ubyte>(0));                                                     // Tag buffer (response portion array)
     }
 
     int receive_request_from_client(int client_fd, Response& response, Request& request){
@@ -379,7 +492,7 @@ namespace cpp_kafka{
                 handle_describe_topic_partitions_request(request, response, buffer);
                 break;
             case KafkaAPIKey::FETCH:
-                handle_fetch_request(request, response);
+                handle_fetch_request(request, response, buffer);
                 break;
             default:
                 break;

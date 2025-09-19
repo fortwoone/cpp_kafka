@@ -130,6 +130,8 @@ namespace cpp_kafka{
         flong producer_id{},
               first_offset{};
         ubyte tagged_fields{0};
+
+        void append_to_response(Response& response) const;
     };
 
     struct FetchPartition{
@@ -141,17 +143,22 @@ namespace cpp_kafka{
         vector<FetchTransaction> aborted_transactions;
         fint preferred_read_replica;
         vector<Record> records;
+
+        void append_to_response(Response& response) const;
     };
 
     struct FetchResponsePortion{
         TopicUUID topic_uuid;
         vector<FetchPartition> partitions;
+
+        void append_to_response(Response& response) const;
     };
 
     vector<Topic> retrieve_data(const vector<DescribeTopicReqArrEntry>& requested_topics);
 
     void handle_api_versions_request(const Request& request, Response& response);
     void handle_describe_topic_partitions_request(const Request& request, Response& response, char* buffer);
+    void handle_fetch_request(const Request& request, Response& response, char* buffer);
 
     int receive_request_from_client(int client_fd, Response& response, Request& request);
 }
