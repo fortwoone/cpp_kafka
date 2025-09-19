@@ -296,7 +296,8 @@ namespace cpp_kafka{
             );
             cerr << "Extracted name: " << req_topic_obj.data << "\n";
             // Account for the tag buffer (one empty byte).
-            offset_for_next_topic += static_cast<ssize_t>(req_topic_obj.data.size());
+            cerr << "Offset with calculation: " << offset_for_next_topic + static_cast<ssize_t>(string_name_length) << "\n";
+            offset_for_next_topic += static_cast<ssize_t>(string_name_length);
         }
 
         auto max_part_count_pos = offset_for_next_topic;
