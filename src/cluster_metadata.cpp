@@ -4,6 +4,8 @@
 
 #include "cluster_metadata.hpp"
 
+
+using std::cerr;
 namespace cpp_kafka{
     vector<RecordBatch> load_cluster_metadata(){
         vector<RecordBatch> ret;
@@ -39,6 +41,7 @@ namespace cpp_kafka{
 
             // Extract records.
             record_count = read_be_and_advance<uint>(buf, offset);
+            cerr << "Resizing record array\n";
             last_batch.records.resize(record_count);
             for (auto& rec_ref : last_batch.records){
                 rec_ref.length = varint_t::decode_and_advance(buf, offset);
@@ -53,6 +56,7 @@ namespace cpp_kafka{
                 if (rec_ref.key_length > 0) {
                     // Do not perform this if the key is null or the key length is equal to 0.
                     // The key is considered null if the decoded key length is equal to -1.
+                    cerr << "Resizing key string\n";
                     rec_ref.key.resize(static_cast<uint>(rec_ref.key_length));
                     for (char& key_idx: rec_ref.key) {
                         key_idx = read_and_advance<char>(buf, offset);
@@ -73,6 +77,7 @@ namespace cpp_kafka{
                         auto& fl_payload = std::get<FeatureLevelPayload>(rec_ref.payload);
                         auto name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
 
+                        cerr << "Resizing feature name\n";
                         fl_payload.name.resize(static_cast<uint>(name_length));
                         for (ubyte i = 0; i < name_length; ++i){
                             fl_payload.name.at(i) = read_and_advance<char>(buf, offset);
@@ -86,8 +91,10 @@ namespace cpp_kafka{
                         // We need to replace the held value, as it is a FeatureLevelPayload by default.
                         auto& tr_payload = rec_ref.payload.emplace<TopicPayload>();
 
-                        unsigned_varint_t name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
+                        auto name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
+                        cerr << "Resizing topic payload name\n";
                         tr_payload.name.resize(static_cast<uint>(name_length));
+
                         for (ubyte i = 0; i < name_length; ++i){
                             tr_payload.name.at(i) = read_and_advance<char>(buf, offset);
                         }
@@ -123,6 +130,7 @@ namespace cpp_kafka{
 
                         // Encoded as a varint, so we need to deduce 1 from this value.
                         auto repl_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                        cerr << "Resizing replica node array\n";
                         part_payload.replica_nodes.resize(static_cast<uint>(repl_arr_size));
                         for (ubyte i = 0; i < repl_arr_size; ++i){
                             part_payload.replica_nodes.at(i) = read_be_and_advance<fint>(buf, offset);
@@ -130,6 +138,7 @@ namespace cpp_kafka{
 
                         // Encoded as a varint, so we need to deduce 1 from this value.
                         auto isr_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                        cerr << "Resizing IRS node array\n";
                         part_payload.isr_nodes.resize(static_cast<uint>(isr_arr_size));
                         for (ubyte i = 0; i < isr_arr_size; ++i){
                             part_payload.isr_nodes.at(i) = read_be_and_advance<fint>(buf, offset);
@@ -137,6 +146,7 @@ namespace cpp_kafka{
 
                         // Encoded as a varint, so we need to deduce 1 from this value.
                         auto rem_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                        cerr << "Resizing removing replicas array\n";
                         part_payload.rem_replicas.resize(static_cast<uint>(rem_arr_size));
                         for (ubyte i = 0; i < rem_arr_size; ++i){
                             part_payload.rem_replicas.at(i) = read_be_and_advance<fint>(buf, offset);
@@ -144,6 +154,7 @@ namespace cpp_kafka{
 
                         // Encoded as a varint, so we need to deduce 1 from this value.
                         auto add_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                        cerr << "Resizing adding replicas array\n";
                         part_payload.add_replicas.resize(static_cast<uint>(add_arr_size));
                         for (ubyte i = 0; i < add_arr_size; ++i){
                             part_payload.add_replicas.at(i) = read_be_and_advance<fint>(buf, offset);
@@ -154,6 +165,7 @@ namespace cpp_kafka{
                         part_payload.part_epoch = read_be_and_advance<uint>(buf, offset);
 
                         auto dir_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                        cerr << "Resizing directory UUID array\n";
                         part_payload.directory_uuids.resize(static_cast<uint>(dir_arr_size));
                         for (auto& itm: part_payload.directory_uuids){
                             offset++;  // Jump one byte ahead to avoid reading incorrect values.
