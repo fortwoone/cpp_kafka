@@ -120,6 +120,7 @@ namespace cpp_kafka{
         for (const auto& partition: partitions){
             partition.append_to_response(response);
         }
+        response.append(static_cast<ubyte>(0)); // Tag buffer
     }
 
     // region Request
