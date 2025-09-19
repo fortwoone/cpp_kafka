@@ -344,6 +344,7 @@ namespace cpp_kafka{
         for (const auto& portion: response_portions){
             // Do nothing for now. We'll handle this later.
         }
+        response.append(static_cast<ubyte>(0));                                                     // Tag buffer
     }
 
     int receive_request_from_client(int client_fd, Response& response, Request& request){
