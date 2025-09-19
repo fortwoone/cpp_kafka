@@ -284,6 +284,7 @@ namespace cpp_kafka{
 
         ssize_t offset_for_next_topic = starting_point + 1;
         for (fbyte i = 0; i < req_topic_arr_len; ++i){
+            cerr << "Original offset: " << offset_for_next_topic;
             auto string_name_length = unsigned_varint_t::decode_and_advance(buffer, offset_for_next_topic) - 1;
             cerr << "Insert topic name into string\n";
             cerr << "String name length: " << static_cast<uint>(string_name_length) << "\n";
@@ -296,7 +297,6 @@ namespace cpp_kafka{
             cerr << "Extracted name: " << req_topic_obj.data << "\n";
             // Account for the tag buffer (one empty byte).
             offset_for_next_topic += static_cast<ssize_t>(req_topic_obj.data.size());
-            cerr << "Byte at offset: " << buffer[offset_for_next_topic] << "\n";
         }
 
         auto max_part_count_pos = offset_for_next_topic;
