@@ -286,6 +286,7 @@ namespace cpp_kafka{
         for (fbyte i = 0; i < req_topic_arr_len; ++i){
             auto string_name_length = unsigned_varint_t::decode_and_advance(buffer, offset_for_next_topic);
             cerr << "Insert topic name into string\n";
+            cerr << "String name length: " << static_cast<uint>(string_name_length) << "\n";
             auto& req_topic_obj = requested_topics.at(i);
             req_topic_obj.data.insert(
                 req_topic_obj.data.end(),
