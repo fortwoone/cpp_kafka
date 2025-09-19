@@ -298,6 +298,7 @@ namespace cpp_kafka{
 
         auto max_part_count_pos = offset_for_next_topic;
 
+        cerr << "Reading max. part count\n";
         auto max_part_count = read_big_endian<fint>(buffer + max_part_count_pos);
         auto cursor = read_big_endian<fbyte>(buffer + max_part_count_pos + sizeof(fint));
 
