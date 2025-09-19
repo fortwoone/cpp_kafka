@@ -77,8 +77,8 @@ namespace cpp_kafka{
     };
 
     struct APIVersionArrEntry{
-        KafkaAPIKey api_key;
-        fshort min_version, max_version;
+        KafkaAPIKey api_key{};
+        fshort min_version{}, max_version{};
         ubyte tag_buffer{0};
 
         void append_to_response(Response& response) const;
@@ -124,6 +124,28 @@ namespace cpp_kafka{
         TopicOperationFlags allowed_ops_flags;
 
         void append_to_response(Response& response) const;
+    };
+
+    struct FetchTransaction{
+        flong producer_id{},
+              first_offset{};
+        ubyte tagged_fields{0};
+    };
+
+    struct FetchPartition{
+        fint partition_index;
+        KafkaErrorCode err_code;
+        flong high_watermark,
+              last_stable_offset,
+              log_start_offset;
+        vector<FetchTransaction> aborted_transactions;
+        fint preferred_read_replica;
+        vector<Record> records;
+    };
+
+    struct FetchResponsePortion{
+        TopicUUID topic_uuid;
+        vector<FetchPartition> partitions;
     };
 
     vector<Topic> retrieve_data(const vector<DescribeTopicReqArrEntry>& requested_topics);

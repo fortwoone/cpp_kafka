@@ -308,7 +308,7 @@ namespace cpp_kafka{
 
 
         fshort version = request.get_api_version();
-        response.append(static_cast<ubyte>(0)); // Tag buffer
+        response.append(static_cast<ubyte>(0)); // Tag buffer (response header v1)
         if (version > 0){
             response.append(host_to_network_short(to_underlying(KafkaErrorCode::UNSUPPORTED_VERSION))); // Error code
         }
@@ -326,6 +326,23 @@ namespace cpp_kafka{
             }
             response.append(static_cast<ubyte>(0xFF));                          // Next cursor (null for now)
             response.append(static_cast<ubyte>(0));                             // Tag buffer
+        }
+    }
+
+    void handle_fetch_request(const Request& request, Response& response){
+        response.append(static_cast<ubyte>(0)); // Tag buffer (response header v1)
+
+        vector<FetchResponsePortion> response_portions;
+
+        response.append(static_cast<fint>(0));                                                      // Throttle time (ms)
+        response.append(host_to_network_short(to_underlying(KafkaErrorCode::NO_ERROR)));            // Error code
+        response.append(static_cast<fint>(0));                                                      // Session ID
+        auto size_as_varint = unsigned_varint_t(static_cast<uint>(response_portions.size() + 1));   // Encoded as a varint so we add 1
+        for (const ubyte& len_portion: size_as_varint.encode()){
+            response.append(len_portion);
+        }
+        for (const auto& portion: response_portions){
+            // Do nothing for now. We'll handle this later.
         }
     }
 
@@ -359,6 +376,9 @@ namespace cpp_kafka{
                 break;
             case KafkaAPIKey::DESCRIBE_TOPIC_PARTITIONS:
                 handle_describe_topic_partitions_request(request, response, buffer);
+                break;
+            case KafkaAPIKey::FETCH:
+                handle_fetch_request(request, response);
                 break;
             default:
                 break;
