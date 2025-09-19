@@ -437,7 +437,7 @@ namespace cpp_kafka{
             portion.partitions.push_back(
                 {
                     0,
-                    KafkaErrorCode::UNKNOWN_TOPIC_OR_PARTITION,
+                    KafkaErrorCode::UNKNOWN_TOPIC_ID,
                     0,
                     0,
                     0,
