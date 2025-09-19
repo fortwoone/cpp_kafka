@@ -293,6 +293,7 @@ namespace cpp_kafka{
                 buffer + offset_for_next_topic,
                 buffer + offset_for_next_topic + static_cast<ssize_t>(string_name_length - 1)
             );
+            cerr << "Extracted name: " << req_topic_obj.data << "\n";
             // Account for the tag buffer (one empty byte).
             offset_for_next_topic += static_cast<ssize_t>(string_name_length + 1);
         }
