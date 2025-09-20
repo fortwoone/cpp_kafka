@@ -242,6 +242,7 @@ namespace cpp_kafka{
     }
 
     void append_record_batch_to_response(Response& response, const RecordBatch& record_batch){
+        cerr << "Appending record batch to response\n";
         cerr << "Base offset: " << std::hex << record_batch.base_offset << "\n";
         auto base_off_to_be_vec = convert_to_big_endian(record_batch.base_offset);
         decltype(record_batch.base_offset) base_off_to_be;

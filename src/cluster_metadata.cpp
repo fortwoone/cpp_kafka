@@ -17,6 +17,7 @@ namespace cpp_kafka{
         vector<RecordBatch> ret;
 
         string file_path = "/tmp/kraft-combined-logs/" + topic_name + "-" + to_string(partition) + "/00000000000000000000.log";
+        cerr << "Reading data from " << file_path << "\n";
 
         bool is_metadata = (topic_name == "__cluster_metadata");
 
@@ -41,6 +42,7 @@ namespace cpp_kafka{
             last_batch.partition_leader_epoch = read_be_and_advance<uint>(buf, offset);
             last_batch.magic = read_be_and_advance<ubyte>(buf, offset);
             last_batch.crc_checksum = read_be_and_advance<fint>(buf, offset);
+            cerr << "Read CRC checksum: " << std::hex << last_batch.crc_checksum << "\n";
             last_batch.attributes = read_be_and_advance<fshort>(buf, offset);
             last_batch.last_offset_delta = read_be_and_advance<fint>(buf, offset);
             last_batch.base_timestamp = read_be_and_advance<flong>(buf, offset);
