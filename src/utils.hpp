@@ -43,6 +43,7 @@ using SockAddrPtr = SockAddr*;
 
 namespace cpp_kafka{
     using std::array;
+    using std::vector;
 
     using TopicUUID = array<ubyte, 16>;
 
