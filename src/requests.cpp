@@ -204,6 +204,9 @@ namespace cpp_kafka{
 
     void append_rec_value_to_response(Response& response, const RecordValue& payload){
         append_payload_header_to_response(response, payload.header);
+        if (holds_alternative<vector<ubyte>>(payload.payload)){
+            return response.append(std::get<vector<ubyte>>(payload.payload));
+        }
         if (holds_alternative<FeatureLevelPayload>(payload.payload)){
             return append_feature_lv_payload_to_response(response, std::get<FeatureLevelPayload>(payload.payload));
         }
