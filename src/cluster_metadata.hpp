@@ -75,14 +75,12 @@ namespace cpp_kafka{
     };
 
     // Can be any of the types listed in the definition.
-    using Payload = variant<FeatureLevelPayload, TopicPayload, PartitionPayload>;
+    using Payload = variant<vector<ubyte>, FeatureLevelPayload, TopicPayload, PartitionPayload>;
 
-    struct MetadataRecordPayload{
+    struct RecordValue{
         PayloadHeader header;
         Payload payload;
     };
-
-    using RecordValue = variant<vector<ubyte>, MetadataRecordPayload>;
 
     /**
      * A record in a batch from the cluster metadata log file.
@@ -98,7 +96,7 @@ namespace cpp_kafka{
         RecordValue value;                  // Can be either a metadata record payload, or a regular value.
 
         [[nodiscard]] bool is_metadata() const{
-            return holds_alternative<MetadataRecordPayload>(value);
+            return !holds_alternative<vector<ubyte>>(value.payload);
         }
 
         /**
@@ -109,8 +107,7 @@ namespace cpp_kafka{
             if (!is_metadata()){
                 return false;
             }
-            auto& payload = std::get<MetadataRecordPayload>(value);
-            return holds_alternative<FeatureLevelPayload>(payload.payload);
+            return holds_alternative<FeatureLevelPayload>(value.payload);
         }
 
         /**
@@ -121,8 +118,7 @@ namespace cpp_kafka{
             if (!is_metadata()){
                 return false;
             }
-            auto& payload = std::get<MetadataRecordPayload>(value);
-            return holds_alternative<TopicPayload>(payload.payload);
+            return holds_alternative<TopicPayload>(value.payload);
         }
 
         /**
@@ -133,8 +129,7 @@ namespace cpp_kafka{
             if (!is_metadata()){
                 return false;
             }
-            auto& payload = std::get<MetadataRecordPayload>(value);
-            return holds_alternative<PartitionPayload>(payload.payload);
+            return holds_alternative<PartitionPayload>(value.payload);
         }
     };
 

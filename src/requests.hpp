@@ -158,7 +158,7 @@ namespace cpp_kafka{
     void append_feature_lv_payload_to_response(Response& response, const FeatureLevelPayload& payload);
     void append_topic_payload_to_response(Response& response, const TopicPayload& payload);
     void append_partition_payload_to_response(Response& response, const PartitionPayload& payload);
-    void append_metadata_rec_payload_to_response(Response& response, const MetadataRecordPayload& payload);
+    void append_rec_value_to_response(Response& response, const RecordValue& payload);
     void append_record_to_response(Response& response, const Record& record);
     void append_record_batch_to_response(Response& response, const RecordBatch& record_batch);
 

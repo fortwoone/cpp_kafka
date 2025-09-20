@@ -202,7 +202,7 @@ namespace cpp_kafka{
         response.append(static_cast<ubyte>(0));                         // Tag buffer
     }
 
-    void append_metadata_rec_payload_to_response(Response& response, const MetadataRecordPayload& payload){
+    void append_rec_value_to_response(Response& response, const RecordValue& payload){
         append_payload_header_to_response(response, payload.header);
         if (holds_alternative<FeatureLevelPayload>(payload.payload)){
             return append_feature_lv_payload_to_response(response, std::get<FeatureLevelPayload>(payload.payload));
@@ -228,45 +228,12 @@ namespace cpp_kafka{
 
         response.append(record.value_length.encode());                  // Record's value length as a varint
         if (record.value_length > 0){
-            if (holds_alternative<vector<ubyte>>(record.value)){
-                response.append(std::get<vector<ubyte>>(record.value)); // Record's raw value. Append regardless of its actual format.
-            }
-            else{
-                append_metadata_rec_payload_to_response(                // Record's payload header
-                    response,
-                    std::get<MetadataRecordPayload>(record.value)
-                );
-            }
+            append_rec_value_to_response(response, record.value);
         }
         response.append(static_cast<ubyte>(0));                         // Headers array count
     }
 
     void append_record_batch_to_response(Response& response, const RecordBatch& record_batch){
-        cerr << "Appending record batch to response\n";
-        cerr << "Base offset: " << std::hex << record_batch.base_offset << "\n";
-        auto base_off_to_be_vec = convert_to_big_endian(record_batch.base_offset);
-        decltype(record_batch.base_offset) base_off_to_be;
-        memcpy(&base_off_to_be, base_off_to_be_vec.data(), sizeof(base_off_to_be));
-        cerr << "Base offset (big-endian): " << base_off_to_be << "\n";
-
-        cerr << "Batch length: " << std::hex << record_batch.batch_length << "\n";
-        auto batch_len_to_be_vec = convert_to_big_endian(record_batch.batch_length);
-        decltype(record_batch.batch_length) batch_len_to_be;
-        memcpy(&batch_len_to_be, batch_len_to_be_vec.data(), sizeof(batch_len_to_be));
-        cerr << "Batch length (big-endian): " << batch_len_to_be << "\n";
-
-        cerr << "Partition leader epoch: " << std::hex << record_batch.partition_leader_epoch << "\n";
-        auto part_lead_epoch_be_vec = convert_to_big_endian(record_batch.partition_leader_epoch);
-        decltype(record_batch.partition_leader_epoch) part_lead_epoch_be;
-        memcpy(&part_lead_epoch_be, part_lead_epoch_be_vec.data(), sizeof(part_lead_epoch_be));
-        cerr << "Partition leader epoch (big-endian): " << part_lead_epoch_be << "\n";
-
-        cerr << "CRC checksum: " << std::hex << record_batch.crc_checksum << "\n";
-        auto crc_checksum_be_vec = convert_to_big_endian(record_batch.crc_checksum);
-        decltype(record_batch.crc_checksum) crc_checksum_be;
-        memcpy(&crc_checksum_be, crc_checksum_be_vec.data(), sizeof(crc_checksum_be));
-        cerr << "CRC checksum (big-endian): " << crc_checksum_be << "\n";
-
         response.append(convert_to_big_endian(record_batch.base_offset));                       // Batch's base offset (big-endian)
         response.append(convert_to_big_endian(record_batch.batch_length));                      // Batch's length (big-endian)
         response.append(convert_to_big_endian(record_batch.partition_leader_epoch));            // Batch's partition leader epoch (big-endian)
@@ -391,7 +358,7 @@ namespace cpp_kafka{
                 start_of_tr_list,
                 end_of_tr_list,
                 [req_topic](Record& topic_record){
-                    auto& value = std::get<MetadataRecordPayload>(topic_record.value);
+                    auto& value = topic_record.value;
                     auto& topic_payload = std::get<TopicPayload>(value.payload);
                     return topic_payload.name == req_topic.data;
                 }
@@ -407,13 +374,11 @@ namespace cpp_kafka{
             Topic entry;
             entry.err_code = KafkaErrorCode::NO_ERROR;
             entry.topic_name = req_topic.data;
-            auto& found_val = std::get<MetadataRecordPayload>(found_iter->value);
-            entry.uuid = std::get<TopicPayload>(found_val.payload).uuid;
+            entry.uuid = std::get<TopicPayload>(found_iter->value.payload).uuid;
             entry.allowed_ops_flags = TopicOperationFlags::ALL;
             fint part_index = 0;
             for (const auto& part_rec: part_records){
-                auto& rec_val = std::get<MetadataRecordPayload>(part_rec.value);
-                auto& part_pl = std::get<PartitionPayload>(rec_val.payload);
+                auto& part_pl = std::get<PartitionPayload>(part_rec.value.payload);
                 if (part_pl.topic_uuid != entry.uuid){
                     continue;
                 }

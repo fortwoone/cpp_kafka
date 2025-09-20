@@ -17,7 +17,6 @@ namespace cpp_kafka{
         vector<RecordBatch> ret;
 
         string file_path = "/tmp/kraft-combined-logs/" + topic_name + "-" + to_string(partition) + "/00000000000000000000.log";
-        cerr << "Reading data from " << file_path << "\n";
 
         bool is_metadata = (topic_name == "__cluster_metadata");
 
@@ -42,7 +41,6 @@ namespace cpp_kafka{
             last_batch.partition_leader_epoch = read_be_and_advance<uint>(buf, offset);
             last_batch.magic = read_be_and_advance<ubyte>(buf, offset);
             last_batch.crc_checksum = read_be_and_advance<fint>(buf, offset);
-            cerr << "Read CRC checksum: " << std::hex << last_batch.crc_checksum << "\n";
             last_batch.attributes = read_be_and_advance<fshort>(buf, offset);
             last_batch.last_offset_delta = read_be_and_advance<fint>(buf, offset);
             last_batch.base_timestamp = read_be_and_advance<flong>(buf, offset);
@@ -74,16 +72,16 @@ namespace cpp_kafka{
                 }
                 rec_ref.value_length = varint_t::decode_and_advance(buf, offset);
 
+                // Parse the payload header.
+                auto& rec_value = rec_ref.value;
+                auto& rec_header = rec_value.header;
+                rec_header.frame_ver = read_and_advance<fbyte>(buf, offset);
+                rec_header.type = read_be_and_advance<fbyte>(buf, offset);
+                rec_header.version = read_be_and_advance<fbyte>(buf, offset);
+
                 // Check if this is the cluster metadata file or a regular partition file.
                 if (is_metadata){
                     // This is the metadata file.
-
-                    // Parse the payload header.
-                    auto& rec_value = rec_ref.value.emplace<MetadataRecordPayload>();
-                    auto& rec_header = rec_value.header;
-                    rec_header.frame_ver = read_and_advance<fbyte>(buf, offset);
-                    rec_header.type = read_be_and_advance<fbyte>(buf, offset);
-                    rec_header.version = read_be_and_advance<fbyte>(buf, offset);
 
                     // Act based on the type read.
                     switch (rec_header.type){
@@ -214,11 +212,11 @@ namespace cpp_kafka{
                 }
                 else{
                     // Regular record
-                    auto& rec_value = std::get<vector<ubyte>>(rec_ref.value);
-                    rec_value.resize(static_cast<uint>(rec_ref.value_length));
+                    auto& as_vec = rec_value.payload.emplace<vector<ubyte>>();
+                    as_vec.resize(static_cast<uint>(rec_ref.value_length - static_cast<fint>(sizeof(PayloadHeader))));
 
-                    for (size_t i = 0; i < rec_value.size(); ++i){
-                        rec_value[i] = read_and_advance<ubyte>(buf, offset);
+                    for (size_t i = 0; i < as_vec.size(); ++i){
+                        as_vec[i] = read_and_advance<ubyte>(buf, offset);
                     }
                 }
                 auto header_count = unsigned_varint_t::decode_and_advance(buf, offset);
