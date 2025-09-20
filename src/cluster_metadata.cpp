@@ -13,10 +13,14 @@ namespace cpp_kafka{
     static unordered_set<string> topic_uuids;                                   // Existing topics' UUIDs
     static unordered_map<string, vector<PartitionPayload>> uuid_to_payloads;    // Partitions for topic UUIDs
 
-    vector<RecordBatch> load_cluster_metadata(){
+    vector<RecordBatch> get_record_batches_from_topic(const string& topic_name, const fint& partition){
         vector<RecordBatch> ret;
 
-        int fd = open(METADATA_FILE_PATH, O_RDONLY);
+        string file_path = "/tmp/kraft-combined-logs/" + topic_name + "-" + to_string(partition) + "/00000000000000000000.log";
+
+        bool is_metadata = (topic_name == "__cluster_metadata");
+
+        int fd = open(file_path.c_str(), O_RDONLY);
         if (fd < 0){
             throw runtime_error("Failed to open the cluster metadata file.");
         }
@@ -66,139 +70,154 @@ namespace cpp_kafka{
                         key_idx = read_and_advance<char>(buf, offset);
                     }
                 }
-                rec_ref.value_length = unsigned_varint_t::decode_and_advance(buf, offset);
+                rec_ref.value_length = varint_t::decode_and_advance(buf, offset);
 
-                // Parse the payload header.
-                auto& rec_header = rec_ref.header;
-                rec_header.frame_ver = read_and_advance<fbyte>(buf, offset);
-                rec_header.type = read_be_and_advance<fbyte>(buf, offset);
-                rec_header.version = read_be_and_advance<fbyte>(buf, offset);
+                // Check if this is the cluster metadata file or a regular partition file.
+                if (is_metadata){
+                    // This is the metadata file.
 
-                // Act based on the type read.
-                switch (rec_header.type){
-                    case 0x0C: // Feature level record
-                    {
-                        auto& fl_payload = std::get<FeatureLevelPayload>(rec_ref.payload);
-                        auto name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
+                    // Parse the payload header.
+                    auto& rec_value = rec_ref.value.emplace<MetadataRecordPayload>();
+                    auto& rec_header = rec_value.header;
+                    rec_header.frame_ver = read_and_advance<fbyte>(buf, offset);
+                    rec_header.type = read_be_and_advance<fbyte>(buf, offset);
+                    rec_header.version = read_be_and_advance<fbyte>(buf, offset);
 
-                        fl_payload.name.resize(static_cast<uint>(name_length));
-                        for (ubyte i = 0; i < name_length; ++i){
-                            fl_payload.name.at(i) = read_and_advance<char>(buf, offset);
-                        }
-                        fl_payload.feature_level = read_be_and_advance<fshort>(buf, offset);
-                        auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);  // Extract this so we can skip it and get to the next record.
-                        break;
-                    }
-                    case 0x02: // Topic record
-                    {
-                        // We need to replace the held value, as it is a FeatureLevelPayload by default.
-                        auto& tr_payload = rec_ref.payload.emplace<TopicPayload>();
+                    // Act based on the type read.
+                    switch (rec_header.type){
+                        case 0x0C: // Feature level record
+                        {
+                            auto& fl_payload = std::get<FeatureLevelPayload>(rec_value.payload);
+                            auto name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
 
-                        auto name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
-                        tr_payload.name.resize(static_cast<uint>(name_length));
-
-                        for (ubyte i = 0; i < name_length; ++i){
-                            tr_payload.name.at(i) = read_and_advance<char>(buf, offset);
-                        }
-
-                        offset++;  // Jump one byte ahead to avoid reading incorrect UUIDs.
-
-                        // Extract topic's UUID.
-                        for (ubyte k = 0; k < 16; ++k){
-                            if (k == 5){
-                                tr_payload.uuid[k] = tr_payload.uuid[k - 1];
-                                continue;
+                            fl_payload.name.resize(static_cast<uint>(name_length));
+                            for (ubyte i = 0; i < name_length; ++i){
+                                fl_payload.name.at(i) = read_and_advance<char>(buf, offset);
                             }
-                            tr_payload.uuid[k] = read_and_advance<ubyte>(buf, offset);
+                            fl_payload.feature_level = read_be_and_advance<fshort>(buf, offset);
+                            auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);  // Extract this so we can skip it and get to the next record.
+                            break;
                         }
+                        case 0x02: // Topic record
+                        {
+                            // We need to replace the held value, as it is a FeatureLevelPayload by default.
+                            auto& tr_payload = rec_value.payload.emplace<TopicPayload>();
 
-                        auto uuid_as_str = string(reinterpret_cast<const char*>(tr_payload.uuid.data()), 16);
+                            auto name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
+                            tr_payload.name.resize(static_cast<uint>(name_length));
 
-                        // Reference the topic and its UUID
-                        topic_to_uuid.insert(
-                            {tr_payload.name, tr_payload.uuid}
-                        );
-
-                        topic_uuids.insert(uuid_as_str);
-
-                        // Insert a partition list.
-                        uuid_to_payloads.insert(
-                            {uuid_as_str, {}}
-                        );
-
-                        auto tagged_fields_count = unsigned_varint_t::decode_and_advance(buf, offset);
-                        break;
-                    }
-                    case 0x03:  // Partition record
-                    {
-                        // We need to replace the held value, as it is a FeatureLevelPayload by default.
-                        auto& part_payload = rec_ref.payload.emplace<PartitionPayload>();
-
-                        part_payload.partition_id = read_be_and_advance<fint>(buf, offset);
-                        offset++;  // Jump one byte ahead before reading to avoid reading incorrect values.
-                        for (ubyte k = 0; k < 16; ++k){
-                            if (k == 5){
-                                part_payload.topic_uuid[k] = part_payload.topic_uuid[k - 1];
-                                continue;
+                            for (ubyte i = 0; i < name_length; ++i){
+                                tr_payload.name.at(i) = read_and_advance<char>(buf, offset);
                             }
-                            part_payload.topic_uuid[k] = read_and_advance<ubyte>(buf, offset);
-                        }
 
-                        // Encoded as a varint, so we need to deduce 1 from this value.
-                        auto repl_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
-                        part_payload.replica_nodes.resize(static_cast<uint>(repl_arr_size));
-                        for (ubyte i = 0; i < repl_arr_size; ++i){
-                            part_payload.replica_nodes.at(i) = read_be_and_advance<fint>(buf, offset);
-                        }
+                            offset++;  // Jump one byte ahead to avoid reading incorrect UUIDs.
 
-                        // Encoded as a varint, so we need to deduce 1 from this value.
-                        auto isr_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
-                        part_payload.isr_nodes.resize(static_cast<uint>(isr_arr_size));
-                        for (ubyte i = 0; i < isr_arr_size; ++i){
-                            part_payload.isr_nodes.at(i) = read_be_and_advance<fint>(buf, offset);
-                        }
-
-                        // Encoded as a varint, so we need to deduce 1 from this value.
-                        auto rem_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
-                        part_payload.rem_replicas.resize(static_cast<uint>(rem_arr_size));
-                        for (ubyte i = 0; i < rem_arr_size; ++i){
-                            part_payload.rem_replicas.at(i) = read_be_and_advance<fint>(buf, offset);
-                        }
-
-                        // Encoded as a varint, so we need to deduce 1 from this value.
-                        auto add_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
-                        part_payload.add_replicas.resize(static_cast<uint>(add_arr_size));
-                        for (ubyte i = 0; i < add_arr_size; ++i){
-                            part_payload.add_replicas.at(i) = read_be_and_advance<fint>(buf, offset);
-                        }
-
-                        part_payload.leader_id = read_be_and_advance<uint>(buf, offset);
-                        part_payload.leader_epoch = read_be_and_advance<uint>(buf, offset);
-                        part_payload.part_epoch = read_be_and_advance<uint>(buf, offset);
-
-                        auto dir_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
-                        part_payload.directory_uuids.resize(static_cast<uint>(dir_arr_size));
-                        for (auto& itm: part_payload.directory_uuids){
-                            offset++;  // Jump one byte ahead to avoid reading incorrect values.
+                            // Extract topic's UUID.
                             for (ubyte k = 0; k < 16; ++k){
                                 if (k == 5){
-                                    itm[k] = itm[k - 1];
+                                    tr_payload.uuid[k] = tr_payload.uuid[k - 1];
                                     continue;
                                 }
-                                itm[k] = read_and_advance<ubyte>(buf, offset);
+                                tr_payload.uuid[k] = read_and_advance<ubyte>(buf, offset);
                             }
-                        }
 
-                        string uuid_as_str = {
-                            reinterpret_cast<const char*>(part_payload.topic_uuid.data()),
-                            16
-                        };
-                        uuid_to_payloads[uuid_as_str].push_back(part_payload);
-                        auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);
-                        break;
+                            auto uuid_as_str = string(reinterpret_cast<const char*>(tr_payload.uuid.data()), 16);
+
+                            // Reference the topic and its UUID
+                            topic_to_uuid.insert(
+                                    {tr_payload.name, tr_payload.uuid}
+                            );
+
+                            topic_uuids.insert(uuid_as_str);
+
+                            // Insert a partition list.
+                            uuid_to_payloads.insert(
+                                    {uuid_as_str, {}}
+                            );
+
+                            auto tagged_fields_count = unsigned_varint_t::decode_and_advance(buf, offset);
+                            break;
+                        }
+                        case 0x03:  // Partition record
+                        {
+                            // We need to replace the held value, as it is a FeatureLevelPayload by default.
+                            auto& part_payload = rec_value.payload.emplace<PartitionPayload>();
+
+                            part_payload.partition_id = read_be_and_advance<fint>(buf, offset);
+                            offset++;  // Jump one byte ahead before reading to avoid reading incorrect values.
+                            for (ubyte k = 0; k < 16; ++k){
+                                if (k == 5){
+                                    part_payload.topic_uuid[k] = part_payload.topic_uuid[k - 1];
+                                    continue;
+                                }
+                                part_payload.topic_uuid[k] = read_and_advance<ubyte>(buf, offset);
+                            }
+
+                            // Encoded as a varint, so we need to deduce 1 from this value.
+                            auto repl_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                            part_payload.replica_nodes.resize(static_cast<uint>(repl_arr_size));
+                            for (ubyte i = 0; i < repl_arr_size; ++i){
+                                part_payload.replica_nodes.at(i) = read_be_and_advance<fint>(buf, offset);
+                            }
+
+                            // Encoded as a varint, so we need to deduce 1 from this value.
+                            auto isr_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                            part_payload.isr_nodes.resize(static_cast<uint>(isr_arr_size));
+                            for (ubyte i = 0; i < isr_arr_size; ++i){
+                                part_payload.isr_nodes.at(i) = read_be_and_advance<fint>(buf, offset);
+                            }
+
+                            // Encoded as a varint, so we need to deduce 1 from this value.
+                            auto rem_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                            part_payload.rem_replicas.resize(static_cast<uint>(rem_arr_size));
+                            for (ubyte i = 0; i < rem_arr_size; ++i){
+                                part_payload.rem_replicas.at(i) = read_be_and_advance<fint>(buf, offset);
+                            }
+
+                            // Encoded as a varint, so we need to deduce 1 from this value.
+                            auto add_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                            part_payload.add_replicas.resize(static_cast<uint>(add_arr_size));
+                            for (ubyte i = 0; i < add_arr_size; ++i){
+                                part_payload.add_replicas.at(i) = read_be_and_advance<fint>(buf, offset);
+                            }
+
+                            part_payload.leader_id = read_be_and_advance<uint>(buf, offset);
+                            part_payload.leader_epoch = read_be_and_advance<uint>(buf, offset);
+                            part_payload.part_epoch = read_be_and_advance<uint>(buf, offset);
+
+                            auto dir_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
+                            part_payload.directory_uuids.resize(static_cast<uint>(dir_arr_size));
+                            for (auto& itm: part_payload.directory_uuids){
+                                offset++;  // Jump one byte ahead to avoid reading incorrect values.
+                                for (ubyte k = 0; k < 16; ++k){
+                                    if (k == 5){
+                                        itm[k] = itm[k - 1];
+                                        continue;
+                                    }
+                                    itm[k] = read_and_advance<ubyte>(buf, offset);
+                                }
+                            }
+
+                            string uuid_as_str = {
+                                    reinterpret_cast<const char*>(part_payload.topic_uuid.data()),
+                                    16
+                            };
+                            uuid_to_payloads[uuid_as_str].push_back(part_payload);
+                            auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);
+                            break;
+                        }
+                        default:
+                            throw runtime_error("Unsupported record type.");
                     }
-                    default:
-                        throw runtime_error("Unsupported record type.");
+                }
+                else{
+                    // Regular record
+                    auto& rec_value = std::get<vector<ubyte>>(rec_ref.value);
+                    rec_value.resize(static_cast<uint>(rec_ref.value_length));
+
+                    for (size_t i = 0; i < rec_value.size(); ++i){
+                        rec_value[i] = read_and_advance<ubyte>(buf, offset);
+                    }
                 }
                 auto header_count = unsigned_varint_t::decode_and_advance(buf, offset);
             }
@@ -208,12 +227,25 @@ namespace cpp_kafka{
         return ret;
     }
 
+    vector<RecordBatch> load_cluster_metadata(){
+        return get_record_batches_from_topic("__cluster_metadata", 0);
+    }
+
     bool topic_exists_as_uuid(const TopicUUID& uuid){
         string uuid_as_str = {
             reinterpret_cast<const char*>(uuid.data()),
             16
         };
         return topic_uuids.contains(uuid_as_str);
+    }
+
+    string get_topic_name_from_uuid(const TopicUUID& uuid){
+        for (const auto& [t_name, t_uuid]: topic_to_uuid){
+            if (t_uuid == uuid){
+                return t_name;
+            }
+        }
+        throw invalid_argument("Given UUID does not refer to a topic.");
     }
 
     vector<PartitionPayload> get_partitions_for_uuid(const TopicUUID& uuid){

@@ -102,13 +102,12 @@ namespace cpp_kafka{
             aborted_trans.append_to_response(response);
         }
         response.append(host_to_network_long(preferred_read_replica));
-        unsigned_varint_t rec_count = static_cast<uint>(records.size() + 1);
+        unsigned_varint_t rec_count = static_cast<uint>(record_batches.size() + 1);
         for (const ubyte& len_portion: rec_count.encode()){
             response.append(len_portion);
         }
-        for (const auto& rec: records){
-            // Do nothing for now. Will handle this later if necessary.
-            response.append(rec);
+        for (const auto& rec: record_batches){
+            append_record_batch_to_response(response, rec);
         }
         response.append(static_cast<ubyte>(0));  // Tag buffer
     }
@@ -125,6 +124,138 @@ namespace cpp_kafka{
             partition.append_to_response(response);
         }
         response.append(static_cast<ubyte>(0)); // Tag buffer
+    }
+
+    void append_payload_header_to_response(Response& response, const PayloadHeader& header){
+        response.append(convert_to_big_endian(header.frame_ver));           // Frame version
+        response.append(convert_to_big_endian(header.type));                // Metadata record type (big-endian)
+        response.append(convert_to_big_endian(header.version));             // Metadata record version (big-endian)
+    }
+
+    void append_feature_lv_payload_to_response(Response& response, const FeatureLevelPayload& payload){
+        auto size_as_uvarint = unsigned_varint_t(static_cast<uint>(payload.name.size() + 1));
+        response.append(size_as_uvarint.encode());                      // Name length as unsigned varint
+        for (const auto& c: payload.name){
+            response.append(static_cast<char>(c));                      // Feature name
+        }
+        response.append(convert_to_big_endian(payload.feature_level));  // Feature level (big-endian)
+        response.append(static_cast<ubyte>(0));                         // Tag buffer
+    }
+
+    void append_topic_payload_to_response(Response& response, const TopicPayload& payload){
+        auto size_as_uvarint = unsigned_varint_t(static_cast<uint>(payload.name.size() + 1));
+        response.append(size_as_uvarint.encode());  // Name length as unsigned varint
+        for (const auto& c: payload.name){
+            response.append(static_cast<char>(c));  // Topic name
+        }
+        for (const ubyte& b: payload.uuid){
+            response.append(b);                     // Topic UUID
+        }
+        response.append(static_cast<ubyte>(0));     // Tag buffer
+    }
+
+    void append_partition_payload_to_response(Response& response, const PartitionPayload& payload){
+        response.append(convert_to_big_endian(payload.partition_id));   // Partition ID (big-endian)
+        for (const ubyte& b: payload.topic_uuid){
+            response.append(b);                                         // Topic UUID
+        }
+
+        auto repl_size_uvar = unsigned_varint_t(static_cast<uint>(payload.replica_nodes.size() + 1));
+        response.append(repl_size_uvar.encode());                       // Length of replica nodes array as unsigned varint
+        for (const fint& repl_node: payload.replica_nodes){
+            response.append(convert_to_big_endian(repl_node));          // Replica nodes (big-endian)
+        }
+
+        auto isr_size_uvar = unsigned_varint_t(static_cast<uint>(payload.isr_nodes.size() + 1));
+        response.append(isr_size_uvar.encode());                        // Length of ISR nodes array as unsigned varint
+        for (const fint& isr_node: payload.isr_nodes){
+            response.append(convert_to_big_endian(isr_node));           // ISR nodes (big-endian)
+        }
+
+        auto rem_size_uvar = unsigned_varint_t(static_cast<uint>(payload.rem_replicas.size() + 1));
+        response.append(rem_size_uvar.encode());                        // Length of removing replica nodes array as unsigned varint
+        for (const fint& rem_repl_node: payload.rem_replicas){
+            response.append(convert_to_big_endian(rem_repl_node));      // Removing replica nodes (big-endian)
+        }
+
+        auto add_size_uvar = unsigned_varint_t(static_cast<uint>(payload.add_replicas.size() + 1));
+        response.append(add_size_uvar.encode());
+        for (const fint& add_repl_node: payload.add_replicas){
+            response.append(convert_to_big_endian(add_repl_node));      // Adding replica nodes (big-endian)
+        }
+
+        response.append(convert_to_big_endian(payload.leader_id));      // Leader ID (big-endian)
+        response.append(convert_to_big_endian(payload.leader_epoch));   // Leader epoch (big-endian)
+        response.append(convert_to_big_endian(payload.part_epoch));     // Partition epoch (big-endian)
+
+        auto uuid_arr_size = unsigned_varint_t(static_cast<uint>(payload.directory_uuids.size() + 1));
+        response.append(uuid_arr_size.encode());                        // Size of directory UUID array as unsigned varint
+        for (const auto& dir_uuid: payload.directory_uuids){
+            for (const ubyte& b: dir_uuid){
+                response.append(b);                                     // Directory UUIDs
+            }
+        }
+
+        response.append(static_cast<ubyte>(0));                         // Tag buffer
+    }
+
+    void append_metadata_rec_payload_to_response(Response& response, const MetadataRecordPayload& payload){
+        append_payload_header_to_response(response, payload.header);
+        if (holds_alternative<FeatureLevelPayload>(payload.payload)){
+            return append_feature_lv_payload_to_response(response, std::get<FeatureLevelPayload>(payload.payload));
+        }
+        if (holds_alternative<TopicPayload>(payload.payload)){
+            return append_topic_payload_to_response(response, std::get<TopicPayload>(payload.payload));
+        }
+        append_partition_payload_to_response(response, std::get<PartitionPayload>(payload.payload));
+    }
+
+    void append_record_to_response(Response& response, const Record& record){
+        response.append(record.length.encode());                        // Record's length as a varint
+        response.append(convert_to_big_endian(record.attributes));      // Record's attributes (big-endian)
+        response.append(record.timestamp_delta.encode());               // Record's timestamp delta as a varint
+        response.append(record.offset_delta.encode());                  // Record's offset delta as a varint
+
+        response.append(record.key_length.encode());                    // Record's key length as a varint
+        if (record.key_length > 0) {
+            for (const auto& c: record.key) {
+                response.append(c);                                     // Record's key
+            }
+        }
+
+        response.append(record.value_length.encode());                  // Record's value length as a varint
+        if (record.value_length > 0){
+            if (holds_alternative<vector<ubyte>>(record.value)){
+                response.append(std::get<vector<ubyte>>(record.value)); // Record's raw value. Append regardless of its actual format.
+            }
+            else{
+                append_metadata_rec_payload_to_response(                // Record's payload header
+                    response,
+                    std::get<MetadataRecordPayload>(record.value)
+                );
+            }
+        }
+        response.append(static_cast<ubyte>(0));                         // Headers array count
+    }
+
+    void append_record_batch_to_response(Response& response, const RecordBatch& record_batch){
+        response.append(convert_to_big_endian(record_batch.base_offset));                       // Batch's base offset (big-endian)
+        response.append(convert_to_big_endian(record_batch.batch_length));                      // Batch's length (big-endian)
+        response.append(convert_to_big_endian(record_batch.partition_leader_epoch));            // Batch's partition leader epoch (big-endian)
+        response.append(convert_to_big_endian(record_batch.magic));                             // Batch's magic byte (big-endian)
+        response.append(convert_to_big_endian(record_batch.crc_checksum));                      // Batch's CRC checksum (big-endian)
+        response.append(convert_to_big_endian(record_batch.attributes));                        // Batch's attribute bitfield (big-endian)
+        response.append(convert_to_big_endian(record_batch.last_offset_delta));                 // Batch's last offset delta (big-endian)
+        response.append(convert_to_big_endian(record_batch.base_timestamp));                    // Batch's base timestamp (big-endian)
+        response.append(convert_to_big_endian(record_batch.max_timestamp));                     // Batch's max timestamp (big-endian)
+        response.append(convert_to_big_endian(record_batch.producer_id));                       // Batch's producer ID (big-endian)
+        response.append(convert_to_big_endian(record_batch.producer_epoch));                    // Batch's producer epoch (big-endian)
+        response.append(convert_to_big_endian(record_batch.base_sequence));                     // Batch's base sequence (big-endian)
+
+        response.append(convert_to_big_endian(static_cast<uint>(record_batch.records.size()))); // Length of batch's records array (big-endian)
+        for (const auto& rec: record_batch.records){
+            append_record_to_response(response, rec);
+        }
     }
 
     // region Request
@@ -232,7 +363,8 @@ namespace cpp_kafka{
                 start_of_tr_list,
                 end_of_tr_list,
                 [req_topic](Record& topic_record){
-                    auto& topic_payload = std::get<TopicPayload>(topic_record.payload);
+                    auto& value = std::get<MetadataRecordPayload>(topic_record.value);
+                    auto& topic_payload = std::get<TopicPayload>(value.payload);
                     return topic_payload.name == req_topic.data;
                 }
             );
@@ -247,11 +379,13 @@ namespace cpp_kafka{
             Topic entry;
             entry.err_code = KafkaErrorCode::NO_ERROR;
             entry.topic_name = req_topic.data;
-            entry.uuid = std::get<TopicPayload>(found_iter->payload).uuid;
+            auto& found_val = std::get<MetadataRecordPayload>(found_iter->value);
+            entry.uuid = std::get<TopicPayload>(found_val.payload).uuid;
             entry.allowed_ops_flags = TopicOperationFlags::ALL;
             fint part_index = 0;
             for (const auto& part_rec: part_records){
-                auto& part_pl = std::get<PartitionPayload>(part_rec.payload);
+                auto& rec_val = std::get<MetadataRecordPayload>(part_rec.value);
+                auto& part_pl = std::get<PartitionPayload>(rec_val.payload);
                 if (part_pl.topic_uuid != entry.uuid){
                     continue;
                 }
@@ -447,8 +581,9 @@ namespace cpp_kafka{
         response_portions.resize(requested_uuids.size());
         for (ubyte i = 0; i < requested_uuids.size(); ++i){
             auto& portion = response_portions.at(i);
-            auto uuid = requested_uuids.at(i);
+            auto& uuid = requested_uuids.at(i);
             portion.topic_uuid = uuid;
+            auto topic_name = get_topic_name_from_uuid(uuid);
             if (topic_exists_as_uuid(uuid)){
                 string uuid_as_str = {
                     reinterpret_cast<const char*>(uuid.data()),
@@ -469,7 +604,7 @@ namespace cpp_kafka{
                         }
                     );
                     auto& new_partition = portion.partitions.back();
-                    new_partition.records.push_back(get_raw_record_batch(uuid, i));
+                    new_partition.record_batches = get_record_batches_from_topic(topic_name, i);
                 }
             }
             else{

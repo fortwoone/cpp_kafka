@@ -39,16 +39,30 @@ using ulong = uint64_t;
 
 using InternetSockAddr = struct sockaddr_in;
 using SockAddr = struct sockaddr;
-using SockAddrPtr = struct sockaddr*;
+using SockAddrPtr = SockAddr*;
 
 namespace cpp_kafka{
     using std::array;
 
     using TopicUUID = array<ubyte, 16>;
+
+    enum class KafkaAPIKey: fshort{
+        FETCH = 1,
+        API_VERSIONS = 18,
+        DESCRIBE_TOPIC_PARTITIONS = 75
+    };
+
+    enum class KafkaErrorCode: fshort{
+        NO_ERROR = 0,
+        UNKNOWN_TOPIC_OR_PARTITION = 3,
+        UNSUPPORTED_VERSION = 35,
+        UNKNOWN_TOPIC_ID = 100,
+    };
+
 #if __cplusplus >= 202302L
     // Use std::byteswap if it exists.
     using std::byteswap;
-# else
+#else
     using std::vector;
     // Define byteswap if it doesn't exist.
     template <class T> constexpr T byteswap(const T& orig) noexcept{
@@ -65,7 +79,7 @@ namespace cpp_kafka{
         );
         return ret;
     }
-# endif
+#endif
 
     template <class T> T read_big_endian(char* bytes){
         T ret = 0;
@@ -77,16 +91,45 @@ namespace cpp_kafka{
         return ret;
     }
 
-    enum class KafkaAPIKey: fshort{
-        FETCH = 1,
-        API_VERSIONS = 18,
-        DESCRIBE_TOPIC_PARTITIONS = 75
-    };
+    /**
+     * Reads data from a buffer, with the given offset as a difference.
+     * Advances offset by the size of T afterwards for the next read.
+     *
+     * This does NOT necessarily return values in big endian, so beware!
+     * @tparam T The type that is to be read.
+     * @param buf The source buffer.
+     * @param offset The offset used. This will be advanced after the value is computed by sizeof(T).
+     * @return The read value.
+     */
+    template<class T> T read_and_advance(char* buf, ssize_t& offset){
+        T ret;
+        memcpy(&ret, buf + offset, sizeof(T));
+        offset += sizeof(T);
+        return ret;
+    }
 
-    enum class KafkaErrorCode: fshort{
-        NO_ERROR = 0,
-        UNKNOWN_TOPIC_OR_PARTITION = 3,
-        UNSUPPORTED_VERSION = 35,
-        UNKNOWN_TOPIC_ID = 100,
-    };
+    /**
+     * Reads data from a buffer in big endian, with the given offset as a difference.
+     * Advances offset by the size of T afterwards for the next read.
+     * @tparam T The type that is to be read.
+     * @param buf The source buffer.
+     * @param offset The offset used. This will be advanced after the value is computed by sizeof(T).
+     * @return The read value.
+     */
+    template<class T> T read_be_and_advance(char* buf, ssize_t& offset){
+        T ret = read_big_endian<T>(buf + offset);
+        offset += sizeof(T);
+        return ret;
+    }
+
+    template<class T> vector<ubyte> convert_to_big_endian(const T& value){
+        T calc = value;
+        if constexpr (std::endian::native == std::endian::little){  // NOLINT
+            calc = byteswap(calc);
+        }
+
+        const auto* as_ubyte_ptr = reinterpret_cast<const ubyte*>(&calc);
+
+        return {as_ubyte_ptr, as_ubyte_ptr + sizeof(T)};
+    }
 }

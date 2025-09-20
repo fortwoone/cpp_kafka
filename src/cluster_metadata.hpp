@@ -34,7 +34,7 @@ namespace cpp_kafka{
     constexpr char METADATA_FILE_PATH[] = "/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log";
 
     /**
-     * A record payload header.
+     * A metadata record payload header.
      */
     struct PayloadHeader{
         fbyte frame_ver,    // The frame version. Varies depending on the record type.
@@ -43,7 +43,7 @@ namespace cpp_kafka{
     };
 
     /**
-     * Data stored in the payload of a feature level record.
+     * Data stored in the payload of a feature level metadata record.
      */
     struct FeatureLevelPayload{
         string name;            // The feature's name.
@@ -51,7 +51,7 @@ namespace cpp_kafka{
     };
 
     /**
-     * Data stored in the payload of a topic record.
+     * Data stored in the payload of a topic metadata record.
      */
     struct TopicPayload{
         string name;        // The topic's name.
@@ -59,7 +59,7 @@ namespace cpp_kafka{
     };
 
     /**
-     * Data stored in the payload of a partition record.
+     * Data stored in the payload of a partition metadata record.
      */
     struct PartitionPayload{
         fint partition_id;                      // The partition's ID.
@@ -77,6 +77,13 @@ namespace cpp_kafka{
     // Can be any of the types listed in the definition.
     using Payload = variant<FeatureLevelPayload, TopicPayload, PartitionPayload>;
 
+    struct MetadataRecordPayload{
+        PayloadHeader header;
+        Payload payload;
+    };
+
+    using RecordValue = variant<vector<ubyte>, MetadataRecordPayload>;
+
     /**
      * A record in a batch from the cluster metadata log file.
      */
@@ -87,16 +94,23 @@ namespace cpp_kafka{
         varint_t offset_delta;              // The record's offset delta.
         varint_t key_length;                // The record's key string length.
         string key;                         // The record's key.
-        unsigned_varint_t value_length;     // The record's value length.
-        PayloadHeader header;               // The header of this record's payload.
-        Payload payload;                    // This record's payload.
+        varint_t value_length;              // The record's value length.
+        RecordValue value;                  // Can be either a metadata record payload, or a regular value.
+
+        [[nodiscard]] bool is_metadata() const{
+            return holds_alternative<MetadataRecordPayload>(value);
+        }
 
         /**
          * Check if this record holds a feature level payload.
          * @return true if it does, false otherwise.
          */
         [[nodiscard]] bool is_feature_level() const{
-            return holds_alternative<FeatureLevelPayload>(payload);
+            if (!is_metadata()){
+                return false;
+            }
+            auto& payload = std::get<MetadataRecordPayload>(value);
+            return holds_alternative<FeatureLevelPayload>(payload.payload);
         }
 
         /**
@@ -104,7 +118,11 @@ namespace cpp_kafka{
          * @return true if it does, false otherwise.
          */
         [[nodiscard]] bool is_topic() const{
-            return holds_alternative<TopicPayload>(payload);
+            if (!is_metadata()){
+                return false;
+            }
+            auto& payload = std::get<MetadataRecordPayload>(value);
+            return holds_alternative<TopicPayload>(payload.payload);
         }
 
         /**
@@ -112,7 +130,11 @@ namespace cpp_kafka{
          * @return true if it does, false otherwise.
          */
         [[nodiscard]] bool is_partition() const{
-            return holds_alternative<PartitionPayload>(payload);
+            if (!is_metadata()){
+                return false;
+            }
+            auto& payload = std::get<MetadataRecordPayload>(value);
+            return holds_alternative<PartitionPayload>(payload.payload);
         }
     };
 
@@ -136,48 +158,13 @@ namespace cpp_kafka{
     };
 
     /**
-     * Reads data from a buffer, with the given offset as a difference.
-     * Advances offset by the size of T afterwards for the next read.
-     *
-     * This does NOT necessarily return values in big endian, so beware!
-     * @tparam T The type that is to be read.
-     * @param buf The source buffer.
-     * @param offset The offset used. This will be advanced after the value is computed by sizeof(T).
-     * @return The read value.
-     */
-    template<class T> inline T read_and_advance(char* buf, ssize_t& offset){
-        T ret;
-        memcpy(&ret, buf + offset, sizeof(T));
-        offset += sizeof(T);
-        return ret;
-    }
-
-    /**
-     * Reads data from a buffer in big endian, with the given offset as a difference.
-     * Advances offset by the size of T afterwards for the next read.
-     * @tparam T The type that is to be read.
-     * @param buf The source buffer.
-     * @param offset The offset used. This will be advanced after the value is computed by sizeof(T).
-     * @return The read value.
-     */
-    template<class T> inline T read_be_and_advance(char* buf, ssize_t& offset){
-        T ret = read_big_endian<T>(buf + offset);
-        offset += sizeof(T);
-        return ret;
-    }
-
-    /**
-     * Load all record batches from the cluster metadata.
-     * @return A vector containing all loaded batches.
-     */
-    vector<RecordBatch> load_cluster_metadata();
-
-    /**
      * Check if the given UUID refers to a topic.
      * @param uuid The UUID to match against a topic.
      * @return true of it does, false otherwise.
      */
     bool topic_exists_as_uuid(const TopicUUID& uuid);
+
+    string get_topic_name_from_uuid(const TopicUUID& uuid);
 
     /**
      * Return all the partitions for a topic UUID.
@@ -204,4 +191,12 @@ namespace cpp_kafka{
      * @throw runtime_error if the log file couldn't be opened for any reason.
      */
     vector<ubyte> get_raw_record_batch(const TopicUUID& topic_uuid, const fint& partition);
+
+    vector<RecordBatch> get_record_batches_from_topic(const string& topic_name, const fint& partition);
+
+    /**
+     * Load all record batches from the cluster metadata.
+     * @return A vector containing all loaded batches.
+     */
+    vector<RecordBatch> load_cluster_metadata();
 }

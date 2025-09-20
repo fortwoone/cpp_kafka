@@ -42,46 +42,46 @@ namespace cpp_kafka{
             }
 
             // Equality operator
-            template <class IntType> bool operator==(const IntType& val){
+            template <class IntType> bool operator==(const IntType& val) const{
                 return static_cast<flong>(val) == static_cast<flong>(value);
             }
 
             // Spaceship operator (C++20)
-            template <class IntType> auto operator<=>(const IntType& val){
+            template <class IntType> auto operator<=>(const IntType& val) const{
                 return static_cast<flong>(value) <=> static_cast<flong>(val);
             }
 
             // Provide casts for all integer types
-            template<class IntType> explicit operator IntType(){
+            template<class IntType> explicit operator IntType() const{
                 return static_cast<IntType>(value);
             }
 
             // Provide math operations for varints with all non-long integer types
-            template<class IntType> varint_t operator+(const IntType& val){
+            template<class IntType> varint_t operator+(const IntType& val) const{
                 static_assert(sizeof(IntType) < sizeof(ulong), "Cannot add varints to long integers due to size difference.");
                 return varint_t(static_cast<fint>(val) + value);
             }
 
-            template <class IntType> varint_t operator-(const IntType& val){
+            template <class IntType> varint_t operator-(const IntType& val) const{
                 static_assert(sizeof(IntType) < sizeof(ulong), "Cannot subtract longs from varints due to size difference.");
                 return varint_t(value - static_cast<fint>(val));
             }
 
-            template <class IntType> varint_t operator*(const IntType& val){
+            template <class IntType> varint_t operator*(const IntType& val) const{
                 static_assert(sizeof(IntType) < sizeof(ulong), "Cannot multiply varints with longs due to size difference.");
                 return varint_t(value * static_cast<fint>(val));
             }
 
-            template <class IntType> varint_t operator/(const IntType& val){
+            template <class IntType> varint_t operator/(const IntType& val) const{
                 static_assert(sizeof(IntType) < sizeof(ulong), "Cannot divide varints by longs due to size difference.");
                 return varint_t(value / static_cast<fint>(val));
             }
 
-            template <class IntType> varint_t operator>>(const IntType& val){
+            template <class IntType> varint_t operator>>(const IntType& val) const{
                 return varint_t(value >> static_cast<fint>(val));
             }
 
-            template <class IntType> varint_t operator<<(const IntType& val){
+            template <class IntType> varint_t operator<<(const IntType& val) const{
                 return varint_t(value << static_cast<fint>(val));
             }
 
@@ -138,12 +138,12 @@ namespace cpp_kafka{
             }
 
             // Equality operator
-            template <class IntType> bool operator==(const IntType& val){
+            template <class IntType> bool operator==(const IntType& val) const{
                 return static_cast<ulong>(val) == static_cast<ulong>(value);
             }
 
             // Spaceship operator (C++20)
-            template <class IntType> auto operator<=>(const IntType& val){
+            template <class IntType> auto operator<=>(const IntType& val) const{
                 return static_cast<ulong>(value) <=> static_cast<ulong>(val);
             }
 
@@ -151,31 +151,31 @@ namespace cpp_kafka{
                 return static_cast<IntType>(value);
             }
 
-            template<class IntType> unsigned_varint_t operator+(const IntType& val){
+            template<class IntType> unsigned_varint_t operator+(const IntType& val) const{
                 static_assert(sizeof(IntType) < sizeof(ulong), "Cannot add varints to long integers due to size difference.");
                 return unsigned_varint_t(static_cast<uint>(val) + value);
             }
 
-            template <class IntType> unsigned_varint_t operator-(const IntType& val){
+            template <class IntType> unsigned_varint_t operator-(const IntType& val) const{
                 static_assert(sizeof(IntType) < sizeof(ulong), "Cannot subtract longs from varints due to size difference.");
                 return unsigned_varint_t(value - static_cast<uint>(val));
             }
 
-            template <class IntType> unsigned_varint_t operator*(const IntType& val){
+            template <class IntType> unsigned_varint_t operator*(const IntType& val) const{
                 static_assert(sizeof(IntType) < sizeof(ulong), "Cannot multiply varints with longs due to size difference.");
                 return unsigned_varint_t(value * static_cast<uint>(val));
             }
 
-            template <class IntType> unsigned_varint_t operator/(const IntType& val){
+            template <class IntType> unsigned_varint_t operator/(const IntType& val) const{
                 static_assert(sizeof(IntType) < sizeof(ulong), "Cannot divide varints by longs due to size difference.");
                 return unsigned_varint_t(value / static_cast<uint>(val));
             }
 
-            template <class IntType> unsigned_varint_t operator>>(const IntType& val){
+            template <class IntType> unsigned_varint_t operator>>(const IntType& val) const{
                 return unsigned_varint_t(value >> static_cast<uint>(val));
             }
 
-            template <class IntType> unsigned_varint_t operator<<(const IntType& val){
+            template <class IntType> unsigned_varint_t operator<<(const IntType& val) const{
                 return unsigned_varint_t(value << static_cast<uint>(val));
             }
 

@@ -142,7 +142,7 @@ namespace cpp_kafka{
               log_start_offset;
         vector<FetchTransaction> aborted_transactions;
         fint preferred_read_replica;
-        vector<vector<ubyte>> records;  // Stored as raw byte arrays
+        vector<RecordBatch> record_batches;  // Stored as raw byte arrays
 
         void append_to_response(Response& response) const;
     };
@@ -153,6 +153,14 @@ namespace cpp_kafka{
 
         void append_to_response(Response& response) const;
     };
+
+    void append_payload_header_to_response(Response& response, const PayloadHeader& header);
+    void append_feature_lv_payload_to_response(Response& response, const FeatureLevelPayload& payload);
+    void append_topic_payload_to_response(Response& response, const TopicPayload& payload);
+    void append_partition_payload_to_response(Response& response, const PartitionPayload& payload);
+    void append_metadata_rec_payload_to_response(Response& response, const MetadataRecordPayload& payload);
+    void append_record_to_response(Response& response, const Record& record);
+    void append_record_batch_to_response(Response& response, const RecordBatch& record_batch);
 
     vector<Topic> retrieve_data(const vector<DescribeTopicReqArrEntry>& requested_topics);
 
