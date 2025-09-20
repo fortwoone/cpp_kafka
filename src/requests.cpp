@@ -3,6 +3,9 @@
 //
 
 #include "requests.hpp"
+#include <iostream>
+#include <iomanip>
+using std::cerr;
 
 namespace cpp_kafka{
     // Loaded once so every child process can read it later
@@ -239,6 +242,30 @@ namespace cpp_kafka{
     }
 
     void append_record_batch_to_response(Response& response, const RecordBatch& record_batch){
+        cerr << "Base offset: " << std::hex << record_batch.base_offset << "\n";
+        auto base_off_to_be_vec = convert_to_big_endian(record_batch.base_offset);
+        decltype(record_batch.base_offset) base_off_to_be;
+        memcpy(&base_off_to_be, base_off_to_be_vec.data(), sizeof(base_off_to_be));
+        cerr << "Base offset (big-endian): " << base_off_to_be << "\n";
+
+        cerr << "Batch length: " << std::hex << record_batch.batch_length << "\n";
+        auto batch_len_to_be_vec = convert_to_big_endian(record_batch.batch_length);
+        decltype(record_batch.batch_length) batch_len_to_be;
+        memcpy(&batch_len_to_be, batch_len_to_be_vec.data(), sizeof(batch_len_to_be));
+        cerr << "Batch length (big-endian): " << batch_len_to_be << "\n";
+
+        cerr << "Partition leader epoch: " << std::hex << record_batch.partition_leader_epoch << "\n";
+        auto part_lead_epoch_be_vec = convert_to_big_endian(record_batch.partition_leader_epoch);
+        decltype(record_batch.partition_leader_epoch) part_lead_epoch_be;
+        memcpy(&part_lead_epoch_be, part_lead_epoch_be_vec.data(), sizeof(part_lead_epoch_be));
+        cerr << "Partition leader epoch (big-endian): " << part_lead_epoch_be << "\n";
+
+        cerr << "CRC checksum: " << std::hex << record_batch.crc_checksum << "\n";
+        auto crc_checksum_be_vec = convert_to_big_endian(record_batch.crc_checksum);
+        decltype(record_batch.crc_checksum) crc_checksum_be;
+        memcpy(&crc_checksum_be, part_lead_epoch_be_vec.data(), sizeof(crc_checksum_be));
+        cerr << "Partition leader epoch (big-endian): " << crc_checksum_be << "\n";
+
         response.append(convert_to_big_endian(record_batch.base_offset));                       // Batch's base offset (big-endian)
         response.append(convert_to_big_endian(record_batch.batch_length));                      // Batch's length (big-endian)
         response.append(convert_to_big_endian(record_batch.partition_leader_epoch));            // Batch's partition leader epoch (big-endian)
