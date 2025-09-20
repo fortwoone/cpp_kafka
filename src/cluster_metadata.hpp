@@ -5,6 +5,8 @@
 #pragma once
 
 #include <fcntl.h>
+#include <fstream>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -17,8 +19,13 @@
 
 namespace cpp_kafka{
     using std::holds_alternative;
+    using std::ifstream;
+    using std::invalid_argument;
+    using std::istreambuf_iterator;
+    using std::out_of_range;
     using std::runtime_error;
     using std::string;
+    using std::to_string;
     using std::unordered_map;
     using std::unordered_set;
     using std::variant;
@@ -165,7 +172,36 @@ namespace cpp_kafka{
      */
     vector<RecordBatch> load_cluster_metadata();
 
+    /**
+     * Check if the given UUID refers to a topic.
+     * @param uuid The UUID to match against a topic.
+     * @return true of it does, false otherwise.
+     */
     bool topic_exists_as_uuid(const TopicUUID& uuid);
 
+    /**
+     * Return all the partitions for a topic UUID.
+     * @param uuid The topic UUID.
+     * @return A list of partition payloads read from cluster metadata.
+     * @throw out_of_range if the UUID does not refer to a topic.
+     */
     vector<PartitionPayload> get_partitions_for_uuid(const TopicUUID& uuid);
+
+    /**
+     * Count how many partitions exist for the given topic UUID.
+     * @param uuid The topic UUID.
+     * @return The partition list's size.
+     */
+    static size_t get_partition_count_for_uuid(const TopicUUID& uuid);
+
+    /**
+     * Reads a record batch from a topic's log file using its UUID and the partition index.
+     * @param topic_uuid The topic's UUID.
+     * @param partition The partition index for the given topic.
+     * @return The record batch as a raw byte array, read from the corresponding log file.
+     * @throw invalid_argument if the UUID doesn't refer to a topic.
+     * @throw out_of_range if the partition index is bigger than or equal to the number of available partitions for this topic.
+     * @throw runtime_error if the log file couldn't be opened for any reason.
+     */
+    vector<ubyte> get_raw_record_batch(const TopicUUID& topic_uuid, const fint& partition);
 }

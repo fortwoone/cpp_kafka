@@ -108,6 +108,7 @@ namespace cpp_kafka{
         }
         for (const auto& rec: records){
             // Do nothing for now. Will handle this later if necessary.
+            response.append(rec);
         }
         response.append(static_cast<ubyte>(0));  // Tag buffer
     }
@@ -401,6 +402,8 @@ namespace cpp_kafka{
         auto req_uuid_size = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
         requested_uuids.resize(static_cast<uint>(req_uuid_size));
 
+        unordered_map<string, vector<fint>> requested_partitions_by_topic;
+
         for (uint i = 0; i < req_uuid_size; ++i){
             offset++;  // Jump one byte ahead to avoid reading incorrect values
             for (ubyte k = 0; k < 16; ++k){
@@ -410,10 +413,17 @@ namespace cpp_kafka{
                 }
                 requested_uuids[i][k] = read_and_advance<ubyte>(buffer, offset);
             }
+            string uuid_as_str = {
+                reinterpret_cast<const char*>(requested_uuids[i].data()),
+                16
+            };
+            requested_partitions_by_topic.insert({uuid_as_str, {}});
+            auto& part_list = requested_partitions_by_topic.at(uuid_as_str);
             auto partition_count = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
+            part_list.reserve(static_cast<uint>(partition_count));
             for (uint part_index = 0; part_index < partition_count; ++part_index){
+                part_list.push_back(read_and_advance<fint>(buffer, offset));    // Partition index: used to check which one is requested
                 // These variables will end up unused for now, but it might come in handy later.
-                auto partition_index = read_and_advance<fint>(buffer, offset);
                 auto current_leader_epoch = read_and_advance<fint>(buffer, offset);
                 auto fetch_offset = read_and_advance<flong>(buffer, offset);
                 auto last_fetched_epoch = read_and_advance<fint>(buffer, offset);
@@ -440,25 +450,27 @@ namespace cpp_kafka{
             auto uuid = requested_uuids.at(i);
             portion.topic_uuid = uuid;
             if (topic_exists_as_uuid(uuid)){
-                portion.partitions.push_back(
-                    {
-                        0,                                  // Partition index
-                        KafkaErrorCode::NO_ERROR,           // Error code
-                        0,                                  // High watermark
-                        0,                                  // Last stable offset
-                        0,                                  // Log start offset
-                        {},                                 // Aborted transactions
-                        0,                                  // Preferred read replica
-                        {}                                  // Record list
-                    }
-                );
-//                auto available_partitions = get_partitions_for_uuid(uuid);
-//                if (available_partitions.empty()){
-//
-//                }
-//                else{
-//
-//                }
+                string uuid_as_str = {
+                    reinterpret_cast<const char*>(uuid.data()),
+                    16
+                };
+                auto& requested_indexes = requested_partitions_by_topic.at(uuid_as_str);
+                for (const auto& i: requested_indexes){
+                    portion.partitions.push_back(
+                        {
+                            0,                                  // Partition index
+                            KafkaErrorCode::NO_ERROR,           // Error code
+                            0,                                  // High watermark
+                            0,                                  // Last stable offset
+                            0,                                  // Log start offset
+                            {},                                 // Aborted transactions
+                            0,                                  // Preferred read replica
+                            {}                                  // Record list
+                        }
+                    );
+                    auto& new_partition = portion.partitions.back();
+                    new_partition.records.push_back(get_raw_record_batch(uuid, i));
+                }
             }
             else{
                 portion.partitions.push_back(

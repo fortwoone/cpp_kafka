@@ -142,7 +142,7 @@ namespace cpp_kafka{
               log_start_offset;
         vector<FetchTransaction> aborted_transactions;
         fint preferred_read_replica;
-        vector<Record> records;
+        vector<vector<ubyte>> records;  // Stored as raw byte arrays
 
         void append_to_response(Response& response) const;
     };

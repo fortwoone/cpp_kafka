@@ -223,4 +223,40 @@ namespace cpp_kafka{
         };
         return uuid_to_payloads.at(uuid_as_str);
     }
+
+    static size_t get_partition_count_for_uuid(const TopicUUID& uuid){
+        string uuid_as_str = {
+            reinterpret_cast<const char*>(uuid.data()),
+            16
+        };
+        return uuid_to_payloads.at(uuid_as_str).size();
+    }
+
+    vector<ubyte> get_raw_record_batch(const TopicUUID& uuid, const fint& partition){
+        if (!topic_exists_as_uuid(uuid)){
+            throw invalid_argument("Given UUID does not refer to a topic.");
+        }
+        auto part_count = get_partition_count_for_uuid(uuid);
+        if (partition >= part_count){
+            throw out_of_range("Partition index is out of bounds for the current topic.");
+        }
+
+        string topic_name, file_path;
+
+        for (const auto& [name, t_uuid]: topic_to_uuid){
+            if (uuid == t_uuid){
+                topic_name = name;
+                break;
+            }
+        }
+
+        file_path = "/tmp/kraft-combined-logs/" + topic_name + "-" + to_string(partition) + "/00000000000000000000.log";
+
+        ifstream log_file(file_path, std::ios::binary);
+        if (!log_file){
+            throw runtime_error("Could not open the log file.");
+        }
+
+        return {istreambuf_iterator<char>(log_file), {}};
+    }
 }
