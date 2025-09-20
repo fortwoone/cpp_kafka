@@ -305,6 +305,7 @@ namespace cpp_kafka{
     }
 
     void Response::append(vector<ubyte> contents){
+        cerr << "Vector contents size: " << contents.size() << "\n";
         data.insert(data.end(), contents.begin(), contents.end());
         msg_size += static_cast<fint>(contents.size());
     }
