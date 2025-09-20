@@ -5,9 +5,10 @@
 #pragma once
 
 #include <fcntl.h>
-#include <fstream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -16,9 +17,10 @@
 
 namespace cpp_kafka{
     using std::holds_alternative;
-//    using std::ifstream;
     using std::runtime_error;
     using std::string;
+    using std::unordered_map;
+    using std::unordered_set;
     using std::variant;
     using std::vector;
 
@@ -162,4 +164,8 @@ namespace cpp_kafka{
      * @return A vector containing all loaded batches.
      */
     vector<RecordBatch> load_cluster_metadata();
+
+    bool topic_exists_as_uuid(const TopicUUID& uuid);
+
+    vector<PartitionPayload> get_partitions_for_uuid(const TopicUUID& uuid);
 }

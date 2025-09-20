@@ -6,7 +6,13 @@
 
 
 using std::cerr;
+
 namespace cpp_kafka{
+    // Internal storage
+    static unordered_map<string, TopicUUID> topic_to_uuid;                      // Map topic name to UUID
+    static unordered_set<string> topic_uuids;                                   // Existing topics' UUIDs
+    static unordered_map<string, vector<PartitionPayload>> uuid_to_payloads;    // Partitions for topic UUIDs
+
     vector<RecordBatch> load_cluster_metadata(){
         vector<RecordBatch> ret;
 
@@ -106,6 +112,20 @@ namespace cpp_kafka{
                             tr_payload.uuid[k] = read_and_advance<ubyte>(buf, offset);
                         }
 
+                        auto uuid_as_str = string(reinterpret_cast<const char*>(tr_payload.uuid.data()), 16);
+
+                        // Reference the topic and its UUID
+                        topic_to_uuid.insert(
+                            {tr_payload.name, tr_payload.uuid}
+                        );
+
+                        topic_uuids.insert(uuid_as_str);
+
+                        // Insert a partition list.
+                        uuid_to_payloads.insert(
+                            {uuid_as_str, {}}
+                        );
+
                         auto tagged_fields_count = unsigned_varint_t::decode_and_advance(buf, offset);
                         break;
                     }
@@ -168,6 +188,12 @@ namespace cpp_kafka{
                                 itm[k] = read_and_advance<ubyte>(buf, offset);
                             }
                         }
+
+                        string uuid_as_str = {
+                            reinterpret_cast<const char*>(part_payload.topic_uuid.data()),
+                            16
+                        };
+                        uuid_to_payloads[uuid_as_str].push_back(part_payload);
                         auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);
                         break;
                     }
@@ -180,5 +206,21 @@ namespace cpp_kafka{
         close(fd);
 
         return ret;
+    }
+
+    bool topic_exists_as_uuid(const TopicUUID& uuid){
+        string uuid_as_str = {
+            reinterpret_cast<const char*>(uuid.data()),
+            16
+        };
+        return topic_uuids.contains(uuid_as_str);
+    }
+
+    vector<PartitionPayload> get_partitions_for_uuid(const TopicUUID& uuid){
+        string uuid_as_str = {
+            reinterpret_cast<const char*>(uuid.data()),
+            16
+        };
+        return uuid_to_payloads.at(uuid_as_str);
     }
 }

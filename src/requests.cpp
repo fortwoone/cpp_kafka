@@ -246,7 +246,7 @@ namespace cpp_kafka{
             entry.topic_name = req_topic.data;
             entry.uuid = std::get<TopicPayload>(found_iter->payload).uuid;
             entry.allowed_ops_flags = TopicOperationFlags::ALL;
-            uint part_index = 0;
+            fint part_index = 0;
             for (const auto& part_rec: part_records){
                 auto& part_pl = std::get<PartitionPayload>(part_rec.payload);
                 if (part_pl.topic_uuid != entry.uuid){
@@ -434,18 +434,41 @@ namespace cpp_kafka{
             auto& portion = response_portions.at(i);
             auto uuid = requested_uuids.at(i);
             portion.topic_uuid = uuid;
-            portion.partitions.push_back(
-                {
-                    0,
-                    KafkaErrorCode::UNKNOWN_TOPIC_ID,
-                    0,
-                    0,
-                    0,
-                    {},
-                    0,
-                    {}
-                }
-            );
+            if (topic_exists_as_uuid(uuid)){
+                portion.partitions.push_back(
+                    {
+                        0,                                  // Partition index
+                        KafkaErrorCode::NO_ERROR,           // Error code
+                        0,                                  // High watermark
+                        0,                                  // Last stable offset
+                        0,                                  // Log start offset
+                        {},                                 // Aborted transactions
+                        0,                                  // Preferred read replica
+                        {}                                  // Record list
+                    }
+                );
+//                auto available_partitions = get_partitions_for_uuid(uuid);
+//                if (available_partitions.empty()){
+//
+//                }
+//                else{
+//
+//                }
+            }
+            else{
+                portion.partitions.push_back(
+                    {
+                        0,                                  // Partition index
+                        KafkaErrorCode::UNKNOWN_TOPIC_ID,   // Error code
+                        0,                                  // High watermark
+                        0,                                  // Last stable offset
+                        0,                                  // Log start offset
+                        {},                                 // Aborted transactions
+                        0,                                  // Preferred read replica
+                        {}                                  // Record list
+                    }
+                );
+            }
         }
 
 
