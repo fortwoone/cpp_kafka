@@ -87,7 +87,7 @@ namespace cpp_kafka{
                     switch (rec_header.type){
                         case 0x0C: // Feature level record
                         {
-                            auto& fl_payload = std::get<FeatureLevelPayload>(rec_value.payload);
+                            auto& fl_payload = rec_value.payload.emplace<FeatureLevelPayload>();
                             auto name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
 
                             fl_payload.name.resize(static_cast<uint>(name_length));
