@@ -5,6 +5,9 @@
 #include "requests.hpp"
 
 namespace cpp_kafka{
+    // Loaded once so every child process can read it later
+    static vector<RecordBatch> metadata = load_cluster_metadata();
+
     void APIVersionArrEntry::append_to_response(Response& response) const{
         response.append(host_to_network_short(to_underlying(api_key))); // API key
         response.append(host_to_network_short(min_version));            // Min. supported version
@@ -208,7 +211,6 @@ namespace cpp_kafka{
         ret.reserve(requested_topics.size());
 
         vector<Record> topic_records, part_records;
-        auto metadata = load_cluster_metadata();
 
         for (const auto& batch: metadata){
             for (const auto& record: batch.records){
@@ -428,6 +430,9 @@ namespace cpp_kafka{
             response.append(host_to_network_short(to_underlying(KafkaErrorCode::UNSUPPORTED_VERSION))); // Error code
             return;
         }
+
+        // Metadata was already loaded so we don't need to do it again
+
         vector<FetchResponsePortion> response_portions;
         response_portions.resize(requested_uuids.size());
         for (ubyte i = 0; i < requested_uuids.size(); ++i){
