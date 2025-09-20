@@ -263,8 +263,8 @@ namespace cpp_kafka{
         cerr << "CRC checksum: " << std::hex << record_batch.crc_checksum << "\n";
         auto crc_checksum_be_vec = convert_to_big_endian(record_batch.crc_checksum);
         decltype(record_batch.crc_checksum) crc_checksum_be;
-        memcpy(&crc_checksum_be, part_lead_epoch_be_vec.data(), sizeof(crc_checksum_be));
-        cerr << "Partition leader epoch (big-endian): " << crc_checksum_be << "\n";
+        memcpy(&crc_checksum_be, crc_checksum_be_vec.data(), sizeof(crc_checksum_be));
+        cerr << "CRC checksum (big-endian): " << crc_checksum_be << "\n";
 
         response.append(convert_to_big_endian(record_batch.base_offset));                       // Batch's base offset (big-endian)
         response.append(convert_to_big_endian(record_batch.batch_length));                      // Batch's length (big-endian)
