@@ -414,6 +414,7 @@ namespace cpp_kafka{
                 }
                 requested_uuids[i][k] = read_and_advance<ubyte>(buffer, offset);
             }
+            offset++;  // Jump one byte ahead to avoid reading incorrect values
             string uuid_as_str = {
                 reinterpret_cast<const char*>(requested_uuids[i].data()),
                 16
