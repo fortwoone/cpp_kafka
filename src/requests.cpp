@@ -455,7 +455,7 @@ namespace cpp_kafka{
             for (const auto& k: uuid){
                 cerr << static_cast<uint>(k) << " ";
             }
-            cerr << std::dex << "\n";
+            cerr << std::dec << "\n";
             portion.topic_uuid = uuid;
             auto topic_name = get_topic_name_from_uuid(uuid);
             if (topic_exists_as_uuid(uuid)){
