@@ -3,6 +3,7 @@
 //
 
 #include "cluster_metadata.hpp"
+#include <iomanip>
 
 
 using std::cerr;
@@ -152,13 +153,17 @@ namespace cpp_kafka{
                             auto& part_payload = rec_value.payload.emplace<PartitionPayload>();
 
                             part_payload.partition_id = read_be_and_advance<fint>(buf, offset);
+                            cerr << "Partition's topic UUID: " << std::hex;
                             for (ubyte k = 0; k < 16; ++k){
                                 if (k == 5){
                                     part_payload.topic_uuid[k] = part_payload.topic_uuid[k - 1];
+                                    cerr << static_cast<uint>(part_payload.topic_uuid[k]) << " ";
                                     continue;
                                 }
                                 part_payload.topic_uuid[k] = read_and_advance<ubyte>(buf, offset);
+                                cerr << static_cast<uint>(part_payload.topic_uuid[k]) << " ";
                             }
+                            cerr << std::dec << "\n";
                             offset++;  // Jump one byte ahead before reading to avoid reading incorrect values.
 
                             // Encoded as a varint, so we need to deduce 1 from this value.
