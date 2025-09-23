@@ -3,7 +3,6 @@
 //
 
 #include "cluster_metadata.hpp"
-#include <iomanip>
 
 
 using std::cerr;
@@ -23,7 +22,7 @@ namespace cpp_kafka{
 
         int fd = open(file_path.c_str(), O_RDONLY);
         if (fd < 0){
-            throw runtime_error("Failed to open the cluster metadata file.");
+            throw runtime_error("Failed to open the requested topic's file.");
         }
 
         char buf[1024];
@@ -97,14 +96,18 @@ namespace cpp_kafka{
                         case 0x0C: // Feature level record
                         {
                             auto& fl_payload = rec_value.payload.emplace<FeatureLevelPayload>();
-                            auto name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
+                            // Encoded as varint, i.e. we need to subtract 1.
+                            auto name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
 
+                            // Extract the feature's name and level.
                             fl_payload.name.resize(static_cast<uint>(name_length));
                             for (ubyte i = 0; i < name_length; ++i){
                                 fl_payload.name.at(i) = read_and_advance<char>(buf, offset);
                             }
                             fl_payload.feature_level = read_be_and_advance<fshort>(buf, offset);
-                            auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);  // Extract this so we can skip it and get to the next record.
+
+                            // Extract this so we can skip it and get to the next record.
+                            [[maybe_unused]] auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);
                             break;
                         }
                         case 0x02: // Topic record
@@ -112,7 +115,8 @@ namespace cpp_kafka{
                             // We need to replace the held value, as it is a FeatureLevelPayload by default.
                             auto& tr_payload = rec_value.payload.emplace<TopicPayload>();
 
-                            auto name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1; // Encoded as varint, i.e. we need to subtract 1.
+                            // Encoded as varint, i.e. we need to subtract 1.
+                            auto name_length = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
                             tr_payload.name.resize(static_cast<uint>(name_length));
 
                             for (ubyte i = 0; i < name_length; ++i){
@@ -121,29 +125,24 @@ namespace cpp_kafka{
 
                             // Extract topic's UUID.
                             for (ubyte k = 0; k < 16; ++k){
-//                                if (k == 5){
-//                                    tr_payload.uuid[k] = tr_payload.uuid[k - 1];
-//                                    continue;
-//                                }
                                 tr_payload.uuid[k] = read_and_advance<ubyte>(buf, offset);
                             }
-//                            offset++;  // Jump one byte ahead to avoid reading incorrect UUIDs.
 
-                            auto uuid_as_str = string(reinterpret_cast<const char*>(tr_payload.uuid.data()), 16);
+                            // Reinterpret it as a string, since we don't want to make a new hash function just for it to be stored in maps...
+                            auto uuid_as_str = uuid_as_string(tr_payload.uuid);
 
                             // Reference the topic and its UUID
                             topic_to_uuid.insert(
                                 {tr_payload.name, tr_payload.uuid}
                             );
-
                             topic_uuids.insert(uuid_as_str);
 
                             // Insert a partition list.
                             uuid_to_payloads.insert(
-                                    {uuid_as_str, {}}
+                                {uuid_as_str, {}}
                             );
 
-                            auto tagged_fields_count = unsigned_varint_t::decode_and_advance(buf, offset);
+                            [[maybe_unused]] auto tagged_fields_count = unsigned_varint_t::decode_and_advance(buf, offset);
                             break;
                         }
                         case 0x03:  // Partition record
@@ -151,19 +150,11 @@ namespace cpp_kafka{
                             // We need to replace the held value, as it is a FeatureLevelPayload by default.
                             auto& part_payload = rec_value.payload.emplace<PartitionPayload>();
 
+                            // Extract the partition ID and topic UUID.
                             part_payload.partition_id = read_be_and_advance<fint>(buf, offset);
-                            cerr << "Partition's topic UUID: " << std::hex;
                             for (ubyte k = 0; k < 16; ++k){
-//                                if (k == 5){
-//                                    part_payload.topic_uuid[k] = part_payload.topic_uuid[k - 1];
-//                                    cerr << static_cast<uint>(part_payload.topic_uuid[k]) << " ";
-//                                    continue;
-//                                }
                                 part_payload.topic_uuid[k] = read_and_advance<ubyte>(buf, offset);
-                                cerr << static_cast<uint>(part_payload.topic_uuid[k]) << " ";
                             }
-                            cerr << std::dec << "\n";
-//                            offset++;  // Jump one byte ahead before reading to avoid reading incorrect values.
 
                             // Encoded as a varint, so we need to deduce 1 from this value.
                             auto repl_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
@@ -200,22 +191,15 @@ namespace cpp_kafka{
                             auto dir_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
                             part_payload.directory_uuids.resize(static_cast<uint>(dir_arr_size));
                             for (auto& itm: part_payload.directory_uuids){
-                                offset++;  // Jump one byte ahead to avoid reading incorrect values.
                                 for (ubyte k = 0; k < 16; ++k){
-                                    if (k == 5){
-                                        itm[k] = itm[k - 1];
-                                        continue;
-                                    }
                                     itm[k] = read_and_advance<ubyte>(buf, offset);
                                 }
                             }
 
-                            string uuid_as_str = {
-                                    reinterpret_cast<const char*>(part_payload.topic_uuid.data()),
-                                    16
-                            };
+                            // Reference this partition in the UUID to partition map.
+                            string uuid_as_str = uuid_as_string(part_payload.topic_uuid);
                             uuid_to_payloads[uuid_as_str].push_back(part_payload);
-                            auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);
+                            [[maybe_unused]] auto tagged_count = unsigned_varint_t::decode_and_advance(buf, offset);
                             break;
                         }
                         default:
@@ -231,7 +215,7 @@ namespace cpp_kafka{
                         as_vec[i] = read_and_advance<ubyte>(buf, offset);
                     }
                 }
-                auto header_count = unsigned_varint_t::decode_and_advance(buf, offset);
+                [[maybe_unused]] auto header_count = unsigned_varint_t::decode_and_advance(buf, offset);
             }
         }
         close(fd);
@@ -249,10 +233,7 @@ namespace cpp_kafka{
     }
 
     bool topic_exists_as_uuid(const UUID& uuid){
-        string uuid_as_str = {
-            reinterpret_cast<const char*>(uuid.data()),
-            16
-        };
+        string uuid_as_str = uuid_as_string(uuid);
         return topic_uuids.contains(uuid_as_str);
     }
 
@@ -263,49 +244,5 @@ namespace cpp_kafka{
             }
         }
         throw invalid_argument("Given UUID does not refer to a topic.");
-    }
-
-    vector<PartitionPayload> get_partitions_for_uuid(const UUID& uuid){
-        string uuid_as_str = {
-            reinterpret_cast<const char*>(uuid.data()),
-            16
-        };
-        return uuid_to_payloads.at(uuid_as_str);
-    }
-
-    static size_t get_partition_count_for_uuid(const UUID& uuid){
-        string uuid_as_str = {
-            reinterpret_cast<const char*>(uuid.data()),
-            16
-        };
-        return uuid_to_payloads.at(uuid_as_str).size();
-    }
-
-    vector<ubyte> get_raw_record_batch(const UUID& uuid, const fint& partition){
-        if (!topic_exists_as_uuid(uuid)){
-            throw invalid_argument("Given UUID does not refer to a topic.");
-        }
-        auto part_count = get_partition_count_for_uuid(uuid);
-        if (partition >= part_count){
-            throw out_of_range("Partition index is out of bounds for the current topic.");
-        }
-
-        string topic_name, file_path;
-
-        for (const auto& [name, t_uuid]: topic_to_uuid){
-            if (uuid == t_uuid){
-                topic_name = name;
-                break;
-            }
-        }
-
-        file_path = "/tmp/kraft-combined-logs/" + topic_name + "-" + to_string(partition) + "/00000000000000000000.log";
-
-        ifstream log_file(file_path, std::ios::binary);
-        if (!log_file){
-            throw runtime_error("Could not open the log file.");
-        }
-
-        return {istreambuf_iterator<char>(log_file), {}};
     }
 }

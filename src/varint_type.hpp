@@ -85,20 +85,6 @@ namespace cpp_kafka{
                 return varint_t(value << static_cast<fint>(val));
             }
 
-            [[nodiscard]] ssize_t needed_size() const{
-                uint as_unsigned = (static_cast<uint>(value) << 1) ^ (static_cast<uint>(value) >> 31);
-                ssize_t size = 0;
-                do {
-                    as_unsigned >>= 7;
-                    size++;
-                } while (as_unsigned != 0);
-
-                if (size == 0) {
-                    return 1;
-                }
-                return size;
-            }
-
             /**
              * Decode a varint from the given buffer, with the given offset used as a starting point.
              * The offset will be advanced by the number of bytes read afterwards.
@@ -116,6 +102,7 @@ namespace cpp_kafka{
     };
     
     // UNSIGNED_VARINT type. Can be encoded to a variable size in responses and read from requests and log files.
+    // Encoded using Protobuf's algorithm.
     class unsigned_varint_t{
         uint value;  // The actual value in memory.
 
@@ -177,16 +164,6 @@ namespace cpp_kafka{
 
             template <class IntType> unsigned_varint_t operator<<(const IntType& val) const{
                 return unsigned_varint_t(value << static_cast<uint>(val));
-            }
-
-            [[nodiscard]] size_t needed_size() const{
-                uint copied = value;
-                size_t size = 0;
-                do {
-                    copied >>= 7;
-                    size++;
-                } while (copied > 0);
-                return size;
             }
 
             /**

@@ -12,12 +12,14 @@ namespace cpp_kafka{
         ubyte count = 0;
 
         while (true){
+            // First we copy the current byte into the temporary value.
             memcpy(&byte, buf + offset + count, 1);
+            // Next we decode the byte and add it to the stored value.
             value |= (byte & 0x7F) << shift;
             count++;
 
             if (!(byte & 0x80)){
-                // Stop reading if no more bytes follow for this varint.
+                // Stop reading if no more bytes follow for this varint (i.e. the MSB is not set).
                 break;
             }
             shift += 7;
@@ -25,6 +27,7 @@ namespace cpp_kafka{
                 throw runtime_error("Encoded value is too large for a VARINT.");
             }
         }
+        // Additional step of decoding for signed varints.
         fint decoded_value = (value >> 1) ^ (-(value & 1));
         offset += count;
         return decoded_value;
@@ -56,7 +59,9 @@ namespace cpp_kafka{
         ubyte count = 0;
 
         while (true){
+            // First we copy the current byte into the temporary value.
             memcpy(&byte, buf + offset + count, 1);
+            // Next we decode the byte and add it to the stored value.
             value |= (byte & 0x7F) << shift;
             count++;
 

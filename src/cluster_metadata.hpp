@@ -35,6 +35,9 @@ namespace cpp_kafka{
     // Can be any of the types listed in the definition.
     using Payload = variant<vector<ubyte>, FeatureLevelPayload, TopicPayload, PartitionPayload>;
 
+    /**
+     * Represents a value stored in a record.
+     */
     struct RecordValue{
         PayloadHeader header;
         Payload payload;
@@ -53,6 +56,10 @@ namespace cpp_kafka{
         varint_t value_length;              // The record's value length.
         RecordValue value;                  // Can be either a metadata record payload, or a regular value.
 
+        /**
+         * Check if this record is a metadata record.
+         * @return true if it is, false if it isn't.
+         */
         [[nodiscard]] bool is_metadata() const{
             return !holds_alternative<vector<ubyte>>(value.payload);
         }
@@ -61,7 +68,7 @@ namespace cpp_kafka{
          * Check if this record holds a feature level payload.
          * @return true if it does, false otherwise.
          */
-        [[nodiscard]] bool is_feature_level() const{
+        [[maybe_unused]] [[nodiscard]] bool is_feature_level() const{
             if (!is_metadata()){
                 return false;
             }
@@ -95,19 +102,19 @@ namespace cpp_kafka{
      * A record batch in the cluster metadata log file.
      */
     struct RecordBatch{
-        flong base_offset;                      // The batch's base offset.
-        fint batch_length;                      // The batch's length in bytes.
-        uint partition_leader_epoch;            // The batch's partition leader epoch.
-        ubyte magic;                            // The batch's magic byte. Usually set to 2.
-        fint crc_checksum;                      // The batch's CRC checksum.
-        fshort attributes;                      // The batch's attribute bitfield.
-        fint last_offset_delta;                 // The batch's last offset delta.
-        flong base_timestamp,                   // The batch's base timestamp (Unix format, in milliseconds).
-              max_timestamp;                    // The batch's maximum timestamp (Unix format, in milliseconds).
-        flong producer_id;                      // The batch's producer ID. Set to -1 if there isn't one.
-        fshort producer_epoch;                  // The batch's producer epoch. Set to -1 if there is no producer.
-        fint base_sequence;                     // The batch's base sequence.
-        vector<Record> records;                 // The records contained in this batch.
+        [[maybe_unused]] flong base_offset;                      // The batch's base offset.
+        [[maybe_unused]] fint batch_length;                      // The batch's length in bytes.
+        [[maybe_unused]] uint partition_leader_epoch;            // The batch's partition leader epoch.
+        [[maybe_unused]] ubyte magic;                            // The batch's magic byte. Usually set to 2.
+        [[maybe_unused]] fint crc_checksum;                      // The batch's CRC checksum.
+        [[maybe_unused]] fshort attributes;                      // The batch's attribute bitfield.
+        [[maybe_unused]] fint last_offset_delta;                 // The batch's last offset delta.
+        [[maybe_unused]] flong base_timestamp;                   // The batch's base timestamp (Unix format, in milliseconds).
+        [[maybe_unused]] flong max_timestamp;                    // The batch's maximum timestamp (Unix format, in milliseconds).
+        [[maybe_unused]] flong producer_id;                      // The batch's producer ID. Set to -1 if there isn't one.
+        [[maybe_unused]] fshort producer_epoch;                  // The batch's producer epoch. Set to -1 if there is no producer.
+        [[maybe_unused]] fint base_sequence;                     // The batch's base sequence.
+        [[maybe_unused]] vector<Record> records;                 // The records contained in this batch.
     };
 
     /**
@@ -117,38 +124,28 @@ namespace cpp_kafka{
      */
     bool topic_exists_as_uuid(const UUID& uuid);
 
+    /**
+     * Fetch the topic's name from an existing UUID.
+     * @param uuid The source UUID.
+     * @return The topic's name.
+     * @throw invalid_argument if the UUID isn't mapped to a topic.
+     */
     string get_topic_name_from_uuid(const UUID& uuid);
 
     /**
-     * Return all the partitions for a topic UUID.
-     * @param uuid The topic UUID.
-     * @return A list of partition payloads read from cluster metadata.
-     * @throw out_of_range if the UUID does not refer to a topic.
+     * Get all the record batches from a topic partition's log file.
+     * @param topic_name The topic name that should be used.
+     * @param partition The topic's partition index. Used to determine which log file to open.
+     * @param raw_byte_arr A raw byte array that will store a copy of the raw data, or nullptr if it isn't important to store the raw data.
+     * @return The record batches.
+     * @throw runtime_error if the corresponding log file couldn't be opened.
      */
-    vector<PartitionPayload> get_partitions_for_uuid(const UUID& uuid);
-
-    /**
-     * Count how many partitions exist for the given topic UUID.
-     * @param uuid The topic UUID.
-     * @return The partition list's size.
-     */
-    static size_t get_partition_count_for_uuid(const UUID& uuid);
-
-    /**
-     * Reads a record batch from a topic's log file using its UUID and the partition index.
-     * @param topic_uuid The topic's UUID.
-     * @param partition The partition index for the given topic.
-     * @return The record batch as a raw byte array, read from the corresponding log file.
-     * @throw invalid_argument if the UUID doesn't refer to a topic.
-     * @throw out_of_range if the partition index is bigger than or equal to the number of available partitions for this topic.
-     * @throw runtime_error if the log file couldn't be opened for any reason.
-     */
-    vector<ubyte> get_raw_record_batch(const UUID& topic_uuid, const fint& partition);
-
     vector<RecordBatch> get_record_batches_from_topic(const string& topic_name, const fint& partition, vector<ubyte>* raw_byte_arr = nullptr);
 
     /**
      * Load all record batches from the cluster metadata.
+     * This function is guaranteed to succeed.
+     * If there is no log file or it is empty, the returned vector will be empty.
      * @return A vector containing all loaded batches.
      */
     vector<RecordBatch> load_cluster_metadata();

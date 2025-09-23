@@ -367,9 +367,7 @@ namespace cpp_kafka{
 
             response.append(static_cast<fint>(0));                              // Throttle time
             varint_t topic_count = static_cast<fint>(topic_entries.size() + 1); // Topic array size + 1 (because varint)
-            for (const ubyte& len_portion: topic_count.encode()){
-                response.append(len_portion);
-            }
+            response.append(topic_count.encode());
             for (const auto& topic: topic_entries){
                 topic.append_to_response(response);                             // Append results for each topic to the response.
             }
@@ -407,14 +405,10 @@ namespace cpp_kafka{
         unordered_map<string, vector<fint>> requested_partitions_by_topic;
 
         for (uint i = 0; i < req_uuid_size; ++i){
-            cerr << "UUID: " << std::hex;
             for (ubyte k = 0; k < 16; ++k){
                 requested_uuids[i][k] = read_and_advance<ubyte>(buffer, offset);
             }
-            string uuid_as_str = {
-                reinterpret_cast<const char*>(requested_uuids[i].data()),
-                16
-            };
+            string uuid_as_str = uuid_as_string(requested_uuids[i]);
             requested_partitions_by_topic.insert({uuid_as_str, {}});
             auto& part_list = requested_partitions_by_topic.at(uuid_as_str);
             auto partition_count = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
@@ -441,24 +435,18 @@ namespace cpp_kafka{
 
         // Metadata was already loaded so we don't need to do it again
 
+        // Setup responses
         vector<FetchResponsePortion> response_portions;
         response_portions.resize(requested_uuids.size());
+
         for (ubyte i = 0; i < requested_uuids.size(); ++i){
             auto& portion = response_portions.at(i);
             auto& uuid = requested_uuids.at(i);
-            cerr << "Portion " << static_cast<uint>(i) << "\n";
-            cerr << "UUID: " << std::hex;
-            for (const auto& k: uuid){
-                cerr << static_cast<uint>(k) << " ";
-            }
-            cerr << std::dec << "\n";
             portion.topic_uuid = uuid;
             if (topic_exists_as_uuid(uuid)){
+                // Find the corresponding topic name
                 auto topic_name = get_topic_name_from_uuid(uuid);
-                string uuid_as_str = {
-                    reinterpret_cast<const char*>(uuid.data()),
-                    16
-                };
+                string uuid_as_str = uuid_as_string(uuid);
                 auto& requested_indexes = requested_partitions_by_topic.at(uuid_as_str);
                 for (const auto& i: requested_indexes){
                     portion.partitions.push_back(
@@ -474,7 +462,9 @@ namespace cpp_kafka{
                             {}                                  // Raw batch data
                         }
                     );
+                    // Retrieve the partition we just created
                     auto& new_partition = portion.partitions.back();
+                    // Retrieve the batches and raw data all at once.
                     new_partition.record_batches = get_record_batches_from_topic(
                         topic_name,
                         i,
@@ -483,6 +473,7 @@ namespace cpp_kafka{
                 }
             }
             else{
+                // Fallback for unknown topics
                 portion.partitions.push_back(
                     {
                         0,                                  // Partition index
@@ -499,14 +490,14 @@ namespace cpp_kafka{
             }
         }
 
-
+        // Creating the response body
         response.append(static_cast<fint>(0));                                                      // Throttle time (ms)
         response.append(host_to_network_short(to_underlying(KafkaErrorCode::NO_ERROR)));            // Error code
         response.append(static_cast<fint>(0));                                                      // Session ID
+
+        // Add the topic responses one by one
         auto size_as_varint = unsigned_varint_t(static_cast<uint>(response_portions.size() + 1));   // Encoded as a varint so we add 1
-        for (const ubyte& len_portion: size_as_varint.encode()){
-            response.append(len_portion);
-        }
+        response.append(size_as_varint.encode());
         for (const auto& portion: response_portions){
             portion.append_to_response(response);
         }
@@ -524,18 +515,12 @@ namespace cpp_kafka{
         // Extract the request API key from the buffer.
         request.set_api_key(read_big_endian<fshort>(buffer + 4));
 
-        cerr << "Request API Key: " << request.get_api_key() << "\n";
-
         // Extract the request API version from the buffer.
         request.set_api_version(read_big_endian<fshort>(buffer + 6));
-
-        cerr << "Request API Version: " << request.get_api_version() << "\n";
 
         // Extract correlation ID from the buffer.
         response.set_correlation_id(read_big_endian<fint>(buffer + 8));
         request.set_correlation_id(response.get_correlation_id());
-
-        cerr << "Request Correlation ID: " << response.get_correlation_id() << "\n";
 
         switch ((KafkaAPIKey)request.get_api_key()){
             case KafkaAPIKey::API_VERSIONS:

@@ -43,6 +43,7 @@ using SockAddrPtr = SockAddr*;
 
 namespace cpp_kafka{
     using std::array;
+    using std::string;
     using std::vector;
 
     using UUID = array<ubyte, 16>;
@@ -133,14 +134,16 @@ namespace cpp_kafka{
         return ret;
     }
 
-    template<class T> vector<ubyte> convert_to_big_endian(const T& value){
-        T calc = value;
-        if constexpr (std::endian::native == std::endian::little){  // NOLINT
-            calc = byteswap(calc);
-        }
-
-        const auto* as_ubyte_ptr = reinterpret_cast<const ubyte*>(&calc);
-
-        return {as_ubyte_ptr, as_ubyte_ptr + sizeof(T)};
+    /**
+     * Return a string representation of an UUID.
+     * Used in internal storage to avoid defining a hash function for an UUID.
+     * @param uuid The UUID to convert.
+     * @return A string representation from the UUID.
+     */
+    string uuid_as_string(const UUID& uuid){
+        return {
+            reinterpret_cast<const char*>(uuid.data()),
+            16
+        };
     }
 }
