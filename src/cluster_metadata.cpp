@@ -9,11 +9,11 @@ using std::cerr;
 
 namespace cpp_kafka{
     // Internal storage
-    static unordered_map<string, TopicUUID> topic_to_uuid;                      // Map topic name to UUID
+    static unordered_map<string, UUID> topic_to_uuid;                           // Map topic name to UUID
     static unordered_set<string> topic_uuids;                                   // Existing topics' UUIDs
     static unordered_map<string, vector<PartitionPayload>> uuid_to_payloads;    // Partitions for topic UUIDs
 
-    vector<RecordBatch> get_record_batches_from_topic(const string& topic_name, const fint& partition){
+    vector<RecordBatch> get_record_batches_from_topic(const string& topic_name, const fint& partition, vector<ubyte>* raw_byte_arr){
         vector<RecordBatch> ret;
 
         string file_path = "/tmp/kraft-combined-logs/" + topic_name + "-" + to_string(partition) + "/00000000000000000000.log";
@@ -30,6 +30,14 @@ namespace cpp_kafka{
 
         uint record_count;
         ssize_t offset = 0;
+
+        if (raw_byte_arr != nullptr){
+            raw_byte_array->insert(
+                raw_byte_arr->end(),
+                buf,
+                buf + bytes_read
+            );
+        }
 
         while (offset < bytes_read){
             // Generate a new batch, and repeat this process until reaching EOF.
@@ -231,7 +239,7 @@ namespace cpp_kafka{
         return get_record_batches_from_topic("__cluster_metadata", 0);
     }
 
-    bool topic_exists_as_uuid(const TopicUUID& uuid){
+    bool topic_exists_as_uuid(const UUID& uuid){
         string uuid_as_str = {
             reinterpret_cast<const char*>(uuid.data()),
             16
@@ -239,7 +247,7 @@ namespace cpp_kafka{
         return topic_uuids.contains(uuid_as_str);
     }
 
-    string get_topic_name_from_uuid(const TopicUUID& uuid){
+    string get_topic_name_from_uuid(const UUID& uuid){
         for (const auto& [t_name, t_uuid]: topic_to_uuid){
             if (t_uuid == uuid){
                 return t_name;
@@ -248,7 +256,7 @@ namespace cpp_kafka{
         throw invalid_argument("Given UUID does not refer to a topic.");
     }
 
-    vector<PartitionPayload> get_partitions_for_uuid(const TopicUUID& uuid){
+    vector<PartitionPayload> get_partitions_for_uuid(const UUID& uuid){
         string uuid_as_str = {
             reinterpret_cast<const char*>(uuid.data()),
             16
@@ -256,7 +264,7 @@ namespace cpp_kafka{
         return uuid_to_payloads.at(uuid_as_str);
     }
 
-    static size_t get_partition_count_for_uuid(const TopicUUID& uuid){
+    static size_t get_partition_count_for_uuid(const UUID& uuid){
         string uuid_as_str = {
             reinterpret_cast<const char*>(uuid.data()),
             16
@@ -264,7 +272,7 @@ namespace cpp_kafka{
         return uuid_to_payloads.at(uuid_as_str).size();
     }
 
-    vector<ubyte> get_raw_record_batch(const TopicUUID& uuid, const fint& partition){
+    vector<ubyte> get_raw_record_batch(const UUID& uuid, const fint& partition){
         if (!topic_exists_as_uuid(uuid)){
             throw invalid_argument("Given UUID does not refer to a topic.");
         }

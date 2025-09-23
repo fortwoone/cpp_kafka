@@ -16,6 +16,7 @@
 
 #include "utils.hpp"
 #include "varint_type.hpp"
+#include "payloads.hpp"
 
 namespace cpp_kafka{
     using std::holds_alternative;
@@ -30,49 +31,6 @@ namespace cpp_kafka{
     using std::unordered_set;
     using std::variant;
     using std::vector;
-
-    constexpr char METADATA_FILE_PATH[] = "/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log";
-
-    /**
-     * A metadata record payload header.
-     */
-    struct PayloadHeader{
-        fbyte frame_ver,    // The frame version. Varies depending on the record type.
-              type,         // The record type.
-              version;      // The field version, separate from the frame version. It varies based on the record type.
-    };
-
-    /**
-     * Data stored in the payload of a feature level metadata record.
-     */
-    struct FeatureLevelPayload{
-        string name;            // The feature's name.
-        fshort feature_level;   // The feature's level.
-    };
-
-    /**
-     * Data stored in the payload of a topic metadata record.
-     */
-    struct TopicPayload{
-        string name;        // The topic's name.
-        TopicUUID uuid;     // The topic's 16-byte UUID.
-    };
-
-    /**
-     * Data stored in the payload of a partition metadata record.
-     */
-    struct PartitionPayload{
-        fint partition_id;                      // The partition's ID.
-        TopicUUID topic_uuid;                   // The UUID of the topic this partition is attached to.
-        vector<fint> replica_nodes,             // This partition's replica nodes.
-                     isr_nodes,                 // This partition's in-sync replica nodes.
-                     rem_replicas,              // This partition's removing replica nodes.
-                     add_replicas;              // This partition's Adding Replica Nodes.
-        uint leader_id,                         // This partition's leader ID.
-             leader_epoch;                      // The partition leader's epoch.
-        uint part_epoch;                        // This partition's epoch.
-        vector<TopicUUID> directory_uuids;      // An array of directory UUIDs.
-    };
 
     // Can be any of the types listed in the definition.
     using Payload = variant<vector<ubyte>, FeatureLevelPayload, TopicPayload, PartitionPayload>;
@@ -157,9 +115,9 @@ namespace cpp_kafka{
      * @param uuid The UUID to match against a topic.
      * @return true of it does, false otherwise.
      */
-    bool topic_exists_as_uuid(const TopicUUID& uuid);
+    bool topic_exists_as_uuid(const UUID& uuid);
 
-    string get_topic_name_from_uuid(const TopicUUID& uuid);
+    string get_topic_name_from_uuid(const UUID& uuid);
 
     /**
      * Return all the partitions for a topic UUID.
@@ -167,14 +125,14 @@ namespace cpp_kafka{
      * @return A list of partition payloads read from cluster metadata.
      * @throw out_of_range if the UUID does not refer to a topic.
      */
-    vector<PartitionPayload> get_partitions_for_uuid(const TopicUUID& uuid);
+    vector<PartitionPayload> get_partitions_for_uuid(const UUID& uuid);
 
     /**
      * Count how many partitions exist for the given topic UUID.
      * @param uuid The topic UUID.
      * @return The partition list's size.
      */
-    static size_t get_partition_count_for_uuid(const TopicUUID& uuid);
+    static size_t get_partition_count_for_uuid(const UUID& uuid);
 
     /**
      * Reads a record batch from a topic's log file using its UUID and the partition index.
@@ -185,9 +143,9 @@ namespace cpp_kafka{
      * @throw out_of_range if the partition index is bigger than or equal to the number of available partitions for this topic.
      * @throw runtime_error if the log file couldn't be opened for any reason.
      */
-    vector<ubyte> get_raw_record_batch(const TopicUUID& topic_uuid, const fint& partition);
+    vector<ubyte> get_raw_record_batch(const UUID& topic_uuid, const fint& partition);
 
-    vector<RecordBatch> get_record_batches_from_topic(const string& topic_name, const fint& partition);
+    vector<RecordBatch> get_record_batches_from_topic(const string& topic_name, const fint& partition, vector<ubyte>* raw_byte_arr = nullptr);
 
     /**
      * Load all record batches from the cluster metadata.

@@ -45,10 +45,20 @@ namespace cpp_kafka{
     using std::array;
     using std::vector;
 
-    using TopicUUID = array<ubyte, 16>;
+    using UUID = array<ubyte, 16>;
 
     enum class KafkaAPIKey: fshort{
+        PRODUCE = 0,
         FETCH = 1,
+        LIST_OFFSETS = 2,
+        METADATA = 3,
+        OFFSET_COMMIT = 8,
+        OFFSET_FETCH = 9,
+        FIND_COORDINATOR = 10,
+        JOIN_GROUP = 11,
+        HEARTBEAT = 12,
+        LEAVE_GROUP = 13,
+        SYNC_GROUP = 14,
         API_VERSIONS = 18,
         DESCRIBE_TOPIC_PARTITIONS = 75
     };

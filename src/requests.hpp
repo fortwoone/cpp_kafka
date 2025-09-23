@@ -118,7 +118,7 @@ namespace cpp_kafka{
     struct Topic{
         KafkaErrorCode err_code;
         string topic_name;
-        TopicUUID uuid;
+        UUID uuid;
         bool is_internal;
         vector<TopicPartition> partitions;
         TopicOperationFlags allowed_ops_flags;
@@ -143,24 +143,25 @@ namespace cpp_kafka{
         vector<FetchTransaction> aborted_transactions;
         fint preferred_read_replica;
         vector<RecordBatch> record_batches;  // Stored as raw byte arrays
+        vector<ubyte> batches_as_bytes;      // Raw batch data
 
         void append_to_response(Response& response) const;
     };
 
     struct FetchResponsePortion{
-        TopicUUID topic_uuid;
+        UUID topic_uuid;
         vector<FetchPartition> partitions;
 
         void append_to_response(Response& response) const;
     };
 
-    void append_payload_header_to_response(Response& response, const PayloadHeader& header);
-    void append_feature_lv_payload_to_response(Response& response, const FeatureLevelPayload& payload);
-    void append_topic_payload_to_response(Response& response, const TopicPayload& payload);
-    void append_partition_payload_to_response(Response& response, const PartitionPayload& payload);
-    void append_rec_value_to_response(Response& response, const RecordValue& payload);
-    void append_record_to_response(Response& response, const Record& record);
-    void append_record_batch_to_response(Response& response, const RecordBatch& record_batch);
+//    void append_payload_header_to_response(Response& response, const PayloadHeader& header);
+//    void append_feature_lv_payload_to_response(Response& response, const FeatureLevelPayload& payload);
+//    void append_topic_payload_to_response(Response& response, const TopicPayload& payload);
+//    void append_partition_payload_to_response(Response& response, const PartitionPayload& payload);
+//    void append_rec_value_to_response(Response& response, const RecordValue& payload);
+//    void append_record_to_response(Response& response, const Record& record);
+//    void append_record_batch_to_response(Response& response, const RecordBatch& record_batch);
 
     vector<Topic> retrieve_data(const vector<DescribeTopicReqArrEntry>& requested_topics);
 
