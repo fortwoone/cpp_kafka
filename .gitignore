@@ -54,7 +54,7 @@ dkms.conf
 build
 vcpkg_installed
 
-cmake_build_debug/
+/cmake_build_debug/
 /cmake-build-debug/.cmake/
 /cmake-build-debug/CMakeFiles/
 /cmake-build-debug/Testing/
