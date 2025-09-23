@@ -32,7 +32,7 @@ namespace cpp_kafka{
         ssize_t offset = 0;
 
         if (raw_byte_arr != nullptr){
-            raw_byte_array->insert(
+            raw_byte_arr->insert(
                 raw_byte_arr->end(),
                 buf,
                 buf + bytes_read
