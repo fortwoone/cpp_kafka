@@ -374,9 +374,9 @@ namespace cpp_kafka{
                 topic_entries.begin(),
                 topic_entries.end(),
                 [](Topic& entry1, Topic& entry2){
-                    return entry1.topic_name <=> entry2.topic_name;
+                    return entry1.topic_name < entry2.topic_name;
                 }
-            )
+            );
             for (const auto& topic: topic_entries){
                 topic.append_to_response(response);                             // Append results for each topic to the response.
             }
