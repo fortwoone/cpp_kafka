@@ -140,7 +140,7 @@ namespace cpp_kafka{
      * @param uuid The UUID to convert.
      * @return A string representation from the UUID.
      */
-    string uuid_as_string(const UUID& uuid){
+    inline string uuid_as_string(const UUID& uuid){
         return {
             reinterpret_cast<const char*>(uuid.data()),
             16
