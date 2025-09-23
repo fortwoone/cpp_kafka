@@ -9,13 +9,7 @@ using std::cerr;
 
 namespace cpp_kafka{
     // Loaded once so every child process can read it later
-    static vector<RecordBatch> metadata;
-    try{
-        metadata = load_cluster_metadata();
-    }
-    catch (const runtime_error& err){
-        metadata = {};
-    }
+    static vector<RecordBatch> metadata = load_cluster_metadata();
 
     void APIVersionArrEntry::append_to_response(Response& response) const{
         response.append(host_to_network_short(to_underlying(api_key))); // API key

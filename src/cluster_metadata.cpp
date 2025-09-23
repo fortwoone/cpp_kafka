@@ -241,7 +241,12 @@ namespace cpp_kafka{
     }
 
     vector<RecordBatch> load_cluster_metadata(){
-        return get_record_batches_from_topic("__cluster_metadata", 0);
+        try{
+            return get_record_batches_from_topic("__cluster_metadata", 0);
+        }
+        catch (const runtime_error& exc){
+            return {};
+        }
     }
 
     bool topic_exists_as_uuid(const UUID& uuid){
