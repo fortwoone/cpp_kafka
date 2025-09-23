@@ -119,7 +119,6 @@ namespace cpp_kafka{
                                 tr_payload.name.at(i) = read_and_advance<char>(buf, offset);
                             }
 
-
                             // Extract topic's UUID.
                             for (ubyte k = 0; k < 16; ++k){
 //                                if (k == 5){
@@ -155,16 +154,16 @@ namespace cpp_kafka{
                             part_payload.partition_id = read_be_and_advance<fint>(buf, offset);
                             cerr << "Partition's topic UUID: " << std::hex;
                             for (ubyte k = 0; k < 16; ++k){
-                                if (k == 5){
-                                    part_payload.topic_uuid[k] = part_payload.topic_uuid[k - 1];
-                                    cerr << static_cast<uint>(part_payload.topic_uuid[k]) << " ";
-                                    continue;
-                                }
+//                                if (k == 5){
+//                                    part_payload.topic_uuid[k] = part_payload.topic_uuid[k - 1];
+//                                    cerr << static_cast<uint>(part_payload.topic_uuid[k]) << " ";
+//                                    continue;
+//                                }
                                 part_payload.topic_uuid[k] = read_and_advance<ubyte>(buf, offset);
                                 cerr << static_cast<uint>(part_payload.topic_uuid[k]) << " ";
                             }
                             cerr << std::dec << "\n";
-                            offset++;  // Jump one byte ahead before reading to avoid reading incorrect values.
+//                            offset++;  // Jump one byte ahead before reading to avoid reading incorrect values.
 
                             // Encoded as a varint, so we need to deduce 1 from this value.
                             auto repl_arr_size = unsigned_varint_t::decode_and_advance(buf, offset) - 1;
