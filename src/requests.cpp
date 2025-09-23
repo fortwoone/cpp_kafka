@@ -411,7 +411,6 @@ namespace cpp_kafka{
             for (ubyte k = 0; k < 16; ++k){
                 requested_uuids[i][k] = read_and_advance<ubyte>(buffer, offset);
             }
-            offset++;
             string uuid_as_str = {
                 reinterpret_cast<const char*>(requested_uuids[i].data()),
                 16
