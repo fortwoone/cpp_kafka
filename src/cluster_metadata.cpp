@@ -120,10 +120,6 @@ namespace cpp_kafka{
 
                             // Extract topic's UUID.
                             for (ubyte k = 0; k < 16; ++k){
-                                if (k == 5){
-                                    tr_payload.uuid[k] = tr_payload.uuid[k - 1];
-                                    continue;
-                                }
                                 tr_payload.uuid[k] = read_and_advance<ubyte>(buf, offset);
                             }
 

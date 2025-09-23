@@ -408,10 +408,6 @@ namespace cpp_kafka{
 
         for (uint i = 0; i < req_uuid_size; ++i){
             for (ubyte k = 0; k < 16; ++k){
-                if (k == 5){
-                    requested_uuids[i][k] = requested_uuids[i][k - 1];
-                    continue;
-                }
                 requested_uuids[i][k] = read_and_advance<ubyte>(buffer, offset);
             }
             offset++;  // Jump one byte ahead to avoid reading incorrect values
