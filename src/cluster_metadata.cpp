@@ -128,7 +128,7 @@ namespace cpp_kafka{
 //                                }
                                 tr_payload.uuid[k] = read_and_advance<ubyte>(buf, offset);
                             }
-                            offset++;  // Jump one byte ahead to avoid reading incorrect UUIDs.
+//                            offset++;  // Jump one byte ahead to avoid reading incorrect UUIDs.
 
                             auto uuid_as_str = string(reinterpret_cast<const char*>(tr_payload.uuid.data()), 16);
 
