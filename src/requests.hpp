@@ -23,6 +23,7 @@ namespace cpp_kafka{
     using std::holds_alternative;
     using std::ifstream;
     using std::runtime_error;
+    using std::sort;
     using std::string;
     using std::to_underlying;
     using std::variant;
