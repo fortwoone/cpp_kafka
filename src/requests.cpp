@@ -114,7 +114,7 @@ namespace cpp_kafka{
     void FetchResponsePortion::append_to_response(Response& response) const{
         cerr << "Topic UUID: ";
         for (const auto& p: topic_uuid){
-            cerr << std::hex << p << " ";
+            cerr << std::hex << static_cast<uint>(p) << " ";
             response.append(static_cast<ubyte>(p));
         }
         cerr << std::dec << "\n";
