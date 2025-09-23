@@ -118,8 +118,6 @@ namespace cpp_kafka{
                                 tr_payload.name.at(i) = read_and_advance<char>(buf, offset);
                             }
 
-                            offset++;  // Jump one byte ahead to avoid reading incorrect UUIDs.
-
                             // Extract topic's UUID.
                             for (ubyte k = 0; k < 16; ++k){
                                 if (k == 5){
@@ -128,6 +126,8 @@ namespace cpp_kafka{
                                 }
                                 tr_payload.uuid[k] = read_and_advance<ubyte>(buf, offset);
                             }
+
+                            offset++;  // Jump one byte ahead to avoid reading incorrect UUIDs.
 
                             auto uuid_as_str = string(reinterpret_cast<const char*>(tr_payload.uuid.data()), 16);
 
