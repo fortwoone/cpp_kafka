@@ -407,7 +407,6 @@ namespace cpp_kafka{
         unordered_map<string, vector<fint>> requested_partitions_by_topic;
 
         for (uint i = 0; i < req_uuid_size; ++i){
-            offset++;  // Jump one byte ahead to avoid reading incorrect values
             for (ubyte k = 0; k < 16; ++k){
                 if (k == 5){
                     requested_uuids[i][k] = requested_uuids[i][k - 1];
