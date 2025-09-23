@@ -367,7 +367,9 @@ namespace cpp_kafka{
 
             response.append(static_cast<fint>(0));                              // Throttle time
             varint_t topic_count = static_cast<fint>(topic_entries.size() + 1); // Topic array size + 1 (because varint)
-            response.append(topic_count.encode());
+            for (const ubyte& len_portion: topic_count.encode()){
+                response.append(len_portion);
+            }
             for (const auto& topic: topic_entries){
                 topic.append_to_response(response);                             // Append results for each topic to the response.
             }
