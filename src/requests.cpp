@@ -407,8 +407,10 @@ namespace cpp_kafka{
         unordered_map<string, vector<fint>> requested_partitions_by_topic;
 
         for (uint i = 0; i < req_uuid_size; ++i){
+            cerr << "UUID: " << std::hex;
             for (ubyte k = 0; k < 16; ++k){
                 requested_uuids[i][k] = read_and_advance<ubyte>(buffer, offset);
+                cerr << static_cast<uint>(requested_uuids[i][k])
             }
             string uuid_as_str = {
                 reinterpret_cast<const char*>(requested_uuids[i].data()),
