@@ -279,7 +279,7 @@ namespace cpp_kafka{
         fshort version = request.get_api_version();
         if (version >= 0 && version <= 4){
             vector<APIVersionArrEntry> version_entries;
-            version_entries.reserve(3);
+            version_entries.reserve(4);
             version_entries.push_back(
                 {
                     KafkaAPIKey::API_VERSIONS,
@@ -299,6 +299,13 @@ namespace cpp_kafka{
                     KafkaAPIKey::FETCH,
                     0,
                     16
+                }
+            );
+            version_entries.push_back(
+                {
+                    KafkaAPIKey::PRODUCE,
+                    0,
+                    11
                 }
             );
 
