@@ -296,6 +296,62 @@ namespace cpp_kafka{
     };
 
     /**
+     * A topic as sent in a Produce request.
+     * @details Record batches are not parsed yet for the sake of convenience.
+     */
+    struct ProduceReqTopic {
+        string topic_name;
+        vector<fint> partition_indexes;
+    };
+
+    /**
+     * A record error.
+     */
+    struct ProduceRecordErr {
+        fint batch_index;       // The batch index.
+        string err_message;     // The error message.
+
+        /**
+         * Append this object to a response.
+         * @param response The response this object's contents should be appended to.
+         */
+        void append_to_response(Response& response) const;
+    };
+
+    /**
+     * A partition as returned in a Produce response.
+     */
+    struct ProducePartition {
+        fint partition_index;                   // The partition index.
+        KafkaErrorCode err_code;                // The error code.
+        flong base_offset;                      // The base offset. Set to -1 if an error occurred.
+        flong log_append_time;                  // The timestamp when the message was appended to the log. Set to -1 if an error occurred.
+        flong log_start_offset;                 // The earliest offset available in this partition's log. Set to -1 if an error occurred.
+        vector<ProduceRecordErr> errors;        // A list of per-record errors.
+        string err_message;                     // General error message.
+
+        /**
+         * Append this object to a response.
+         * @param response The response this object's contents should be appended to.
+         */
+        void append_to_response(Response& response) const;
+    };
+
+    /**
+     * A topic as returned in a Produce response.
+     */
+    struct ProduceTopic {
+        string topic_name;                      // The topic's name.
+        vector<ProducePartition> partitions;    // The partitions returned.
+
+        /**
+         * Append this object to a response.
+         * @param response The response this object's contents should be appended to.
+         */
+        void append_to_response(Response& response) const;
+    };
+
+    /**
      * Retrieve the topics corresponding to the requested names in the DescribeTopicPartitions request.
      * @param requested_topics A list of topic names.
      * @return An array of topic objects which either match the topic requested or are fallbacks if there are no matching topics.
@@ -324,6 +380,14 @@ namespace cpp_kafka{
      * @param buffer The raw buffer (used to extract raw data).
      */
     void handle_fetch_request(const Request& request, Response& response, char* buffer);
+
+    /**
+     * Handles Produce requests.
+     * @param request The source request.
+     * @param response The response to edit.
+     * @param buffer The raw buffer (used to extract data).
+     */
+    void handle_produce_request(const Request& request, Response& response, char* buffer);
 
     /**
      * Receive a request and prepare a response afterwards.

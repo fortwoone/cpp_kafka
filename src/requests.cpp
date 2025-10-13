@@ -128,6 +128,67 @@ namespace cpp_kafka{
         response.append(static_cast<ubyte>(0)); // Tag buffer
     }
 
+    void ProduceRecordErr::append_to_response(Response& response) const {
+        response.append(host_to_network_long(batch_index));
+
+        unsigned_varint_t string_length = static_cast<uint>(err_message.size() + 1);
+        response.append(string_length.encode());
+
+        if (!err_message.empty()) {
+            const ubyte* data_ptr = reinterpret_cast<const ubyte*>(err_message.c_str());
+            vector<ubyte> raw_errmsg_bytes{data_ptr, data_ptr + err_message.size()};
+            response.append(raw_errmsg_bytes);
+        }
+
+        response.append(static_cast<ubyte>(0));         // Tag buffer
+    }
+
+    void ProducePartition::append_to_response(Response& response) const {
+        response.append(host_to_network_long(partition_index));
+        response.append(host_to_network_short(to_underlying(err_code)));
+        response.append(base_offset);
+        response.append(log_append_time);
+        response.append(log_start_offset);
+
+        unsigned_varint_t err_len = static_cast<uint>(errors.size() + 1);
+        response.append(err_len.encode());
+
+        for (const auto& batch_err: errors) {
+            batch_err.append_to_response(response);
+        }
+
+        unsigned_varint_t string_length = static_cast<uint>(err_message.size() + 1);
+        response.append(string_length.encode());
+
+        if (!err_message.empty()) {
+            const ubyte* data_ptr = reinterpret_cast<const ubyte*>(err_message.c_str());
+            vector<ubyte> raw_errmsg_bytes{data_ptr, data_ptr + err_message.size()};
+            response.append(raw_errmsg_bytes);
+        }
+
+        response.append(static_cast<ubyte>(0));         // Tag buffer
+    }
+
+    void ProduceTopic::append_to_response(Response& response) const {
+        unsigned_varint_t name_length = static_cast<uint>(topic_name.size() + 1);
+        response.append(name_length.encode());
+
+        if (!topic_name.empty()) {
+            const ubyte* data_ptr = reinterpret_cast<const ubyte*>(topic_name.c_str());
+            vector<ubyte> raw_topic_name_bytes{data_ptr, data_ptr + topic_name.size()};
+            response.append(raw_topic_name_bytes);
+        }
+
+        unsigned_varint_t partitions_length = static_cast<uint>(partitions.size() + 1);
+        response.append(partitions_length.encode());
+
+        for (const auto& partition: partitions) {
+            partition.append_to_response(response);
+        }
+
+        response.append(static_cast<ubyte>(0));     // Tag buffer
+    }
+
     // region Request
     fshort Request::get_api_key() const{
         return header.request_api_key;
@@ -520,6 +581,85 @@ namespace cpp_kafka{
         response.append(static_cast<ubyte>(0));                                                     // Tag buffer (response portion array)
     }
 
+    void handle_produce_request(const Request& request, Response& response, char* buffer) {
+        auto cli_id_size = read_big_endian<fshort>(buffer + 12);
+
+        // Calculation details:
+        // 12 bytes from the previous header fields + 2 bytes from the string length + 1 byte for the empty tag buffer = 15 bytes
+        // Then we add the size of the string itself, and this determines where to start parsing the body in the message.
+        uint starting_point = 15 + cli_id_size;
+        ssize_t offset = starting_point;
+
+        unsigned_varint_t transact_id_size = unsigned_varint_t::decode_and_advance(buffer, offset);
+        string transact_id = "";
+        if (transact_id_size > 0) {
+            transact_id = string(buffer + offset, static_cast<uint>(transact_id_size - 1));
+        }
+
+        offset += static_cast<uint>(transact_id_size);
+
+        fshort required_acks = read_and_advance<fshort>(buffer, offset);
+        fint timeout = read_and_advance<fint>(buffer, offset);
+
+        unsigned_varint_t topic_arr_count = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
+        vector<ProduceReqTopic> requested_topics;
+        auto tac_as_uint = static_cast<uint>(topic_arr_count);
+        requested_topics.reserve(tac_as_uint);
+
+        for (uint i = 0; i < tac_as_uint; ++i) {
+            auto& created_topic = requested_topics.emplace_back();
+            auto name_length = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
+            uint nl_as_uint = static_cast<uint>(name_length);
+            created_topic.topic_name = {buffer + offset, nl_as_uint};
+            offset += nl_as_uint;
+
+            auto partition_array_count = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
+            auto pac_as_uint = static_cast<uint>(partition_array_count);
+            created_topic.partition_indexes.reserve(pac_as_uint);
+            for (uint part_idx = 0; part_idx < pac_as_uint; ++part_idx) {
+                created_topic.partition_indexes.push_back(read_and_advance<fint>(buffer, offset));
+
+                auto rec_batch_size = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
+                offset += static_cast<uint>(rec_batch_size);  // Ignore record batches for now
+                auto part_tagged_fields = unsigned_varint_t::decode_and_advance(buffer, offset);    // Ignore for now
+            }
+            auto topic_tagged_fields = unsigned_varint_t::decode_and_advance(buffer, offset);       // Ignore for now
+        }
+
+        // Compute response data
+        vector<ProduceTopic> ret_topics;
+        ret_topics.resize(tac_as_uint);
+
+        for (uint i = 0; i < tac_as_uint; ++i) {
+            auto& ret_topic = ret_topics[i];
+            auto& req_topic = requested_topics[i];
+
+            ret_topic.topic_name = req_topic.topic_name;
+            ret_topic.partitions.reserve(req_topic.partition_indexes.size());
+            for (const auto& part_idx: req_topic.partition_indexes) {
+                auto& created_ret_part = ret_topic.partitions.emplace_back();
+                created_ret_part.partition_index = part_idx;
+                created_ret_part.err_code = KafkaErrorCode::UNKNOWN_TOPIC_OR_PARTITION;
+                created_ret_part.base_offset = -1;
+                created_ret_part.log_append_time = -1;
+                created_ret_part.log_start_offset = -1;
+            }
+        }
+
+        // Append data to response
+        response.append(static_cast<ubyte>(0)); // Tag buffer (response header v1)
+
+        unsigned_varint_t topic_arr_size = static_cast<uint>(ret_topics.size() + 1);
+        response.append(topic_arr_size.encode());
+
+        for (const auto& ret_topic: ret_topics) {
+            ret_topic.append_to_response(response);
+        }
+
+        response.append(static_cast<fint>(0));      // Throttle time
+        response.append(static_cast<ubyte>(0));     // Tag buffer
+    }
+
     int receive_request_from_client(int client_fd, Response& response, Request& request){
         char buffer[1024];
         ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer), 0);
@@ -538,7 +678,7 @@ namespace cpp_kafka{
         response.set_correlation_id(read_big_endian<fint>(buffer + 8));
         request.set_correlation_id(response.get_correlation_id());
 
-        switch ((KafkaAPIKey)request.get_api_key()){
+        switch (static_cast<KafkaAPIKey>(request.get_api_key())){
             case KafkaAPIKey::API_VERSIONS:
                 handle_api_versions_request(request, response);
                 break;
