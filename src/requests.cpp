@@ -596,43 +596,29 @@ namespace cpp_kafka{
             transact_id = string(buffer + offset, static_cast<uint>(transact_id_size - 1));
         }
 
-        if (transact_id_size > 0) {
-            cerr << "Transactional ID: " << transact_id << "\n";
-        }
-        else {
-            cerr << "Empty transactional ID\n";
-        }
-
         offset += static_cast<uint>(transact_id_size);
 
         fshort required_acks = read_and_advance<fshort>(buffer, offset);
-        cerr << "Required ACKs: " << required_acks << "\n";
         fint timeout = read_be_and_advance<fint>(buffer, offset);
-        cerr << "Timeout : " << timeout << "\n";
 
         unsigned_varint_t topic_arr_count = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
         vector<ProduceReqTopic> requested_topics;
         auto tac_as_uint = static_cast<uint>(topic_arr_count);
-        cerr << "Topic array size: " << tac_as_uint << "\n";
         requested_topics.reserve(tac_as_uint);
 
         for (uint i = 0; i < tac_as_uint; ++i) {
             auto& created_topic = requested_topics.emplace_back();
             auto name_length = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
             uint nl_as_uint = static_cast<uint>(name_length);
-            cerr << "Topic name length: " << nl_as_uint << "\n";
             created_topic.topic_name = {buffer + offset, nl_as_uint};
-            cerr << "Topic name: " << created_topic.topic_name << "\n";
             offset += nl_as_uint;
 
             auto partition_array_count = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
             auto pac_as_uint = static_cast<uint>(partition_array_count);
-            cerr << "Partition array count: " << pac_as_uint << "\n";
             created_topic.partition_indexes.reserve(pac_as_uint);
             for (uint part_idx = 0; part_idx < pac_as_uint; ++part_idx) {
                 auto retrieved_partidx = read_be_and_advance<fint>(buffer, offset);
                 created_topic.partition_indexes.push_back(retrieved_partidx);
-                cerr << "Retrieved partition index: " << retrieved_partidx << "\n";
 
                 auto rec_batch_size = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
                 offset += static_cast<uint>(rec_batch_size);  // Ignore record batches for now
