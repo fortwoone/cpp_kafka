@@ -607,7 +607,7 @@ namespace cpp_kafka{
 
         fshort required_acks = read_and_advance<fshort>(buffer, offset);
         cerr << "Required ACKs: " << required_acks << "\n";
-        fint timeout = read_and_advance<fint>(buffer, offset);
+        fint timeout = read_be_and_advance<fint>(buffer, offset);
         cerr << "Timeout : " << timeout << "\n";
 
         unsigned_varint_t topic_arr_count = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
