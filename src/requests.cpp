@@ -688,6 +688,9 @@ namespace cpp_kafka{
             case KafkaAPIKey::FETCH:
                 handle_fetch_request(request, response, buffer);
                 break;
+            case KafkaAPIKey::PRODUCE:
+                handle_produce_request(request, response, buffer);
+                break;
             default:
                 break;
         }
