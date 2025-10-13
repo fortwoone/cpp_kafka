@@ -630,7 +630,7 @@ namespace cpp_kafka{
             cerr << "Partition array count: " << pac_as_uint << "\n";
             created_topic.partition_indexes.reserve(pac_as_uint);
             for (uint part_idx = 0; part_idx < pac_as_uint; ++part_idx) {
-                auto retrieved_partidx = read_and_advance<fint>(buffer, offset);
+                auto retrieved_partidx = read_be_and_advance<fint>(buffer, offset);
                 created_topic.partition_indexes.push_back(retrieved_partidx);
                 cerr << "Retrieved partition index: " << retrieved_partidx << "\n";
 
