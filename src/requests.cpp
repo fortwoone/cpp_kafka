@@ -627,10 +627,12 @@ namespace cpp_kafka{
 
             auto partition_array_count = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
             auto pac_as_uint = static_cast<uint>(partition_array_count);
+            cerr << "Partition array count: " << pac_as_uint << "\n";
             created_topic.partition_indexes.reserve(pac_as_uint);
             for (uint part_idx = 0; part_idx < pac_as_uint; ++part_idx) {
-                created_topic.partition_indexes.push_back(read_and_advance<fint>(buffer, offset));
-                cerr << "Retrieved partition index: " << created_topic.partition_indexes[part_idx] << "\n";
+                auto retrieved_partidx = read_and_advance<fint>(buffer, offset);
+                created_topic.partition_indexes.push_back(retrieved_partidx);
+                cerr << "Retrieved partition index: " << retrieved_partidx << "\n";
 
                 auto rec_batch_size = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
                 offset += static_cast<uint>(rec_batch_size);  // Ignore record batches for now
