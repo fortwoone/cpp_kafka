@@ -631,6 +631,7 @@ namespace cpp_kafka{
                         buffer + offset + static_cast<uint>(rec_batch_size)
                     )
                 );
+                cerr << "Read batch data\n";
                 offset += static_cast<uint>(rec_batch_size);
                 auto part_tagged_fields = unsigned_varint_t::decode_and_advance(buffer, offset);    // Ignore for now
             }
