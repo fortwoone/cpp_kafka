@@ -623,12 +623,15 @@ namespace cpp_kafka{
 
                 auto rec_batch_size = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
                 auto& current_batch = batches.emplace_back();
+                cerr << "Reading batch data\n";
                 current_batch.insert(
                     current_batch.end(),
-                    buffer + offset,
-                    buffer + offset + static_cast<uint>(rec_batch_size)
+                    reinterpret_cast<ubyte*>(buffer + offset),
+                    reinterpret_cast<ubyte*>(
+                        buffer + offset + static_cast<uint>(rec_batch_size)
+                    )
                 );
-                offset += static_cast<uint>(rec_batch_size);  // Ignore record batches for now
+                offset += static_cast<uint>(rec_batch_size);
                 auto part_tagged_fields = unsigned_varint_t::decode_and_advance(buffer, offset);    // Ignore for now
             }
             auto topic_tagged_fields = unsigned_varint_t::decode_and_advance(buffer, offset);       // Ignore for now

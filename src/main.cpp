@@ -80,6 +80,8 @@ int main(int argc, char* argv[]) {
         exit(0);
     };
     signal(SIGINT, sig_handler);
+    signal(SIGKILL, sig_handler);
+    signal(SIGTERM, sig_handler);
 
     // Read request
     while (true) {  // NOLINT
