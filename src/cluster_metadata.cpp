@@ -237,6 +237,11 @@ namespace cpp_kafka{
         return topic_uuids.contains(uuid_as_str);
     }
 
+    bool topic_exists_as_name(const string& name) {
+        return topic_to_uuid.contains(name);
+    }
+
+
     string get_topic_name_from_uuid(const UUID& uuid){
         for (const auto& [t_name, t_uuid]: topic_to_uuid){
             if (t_uuid == uuid){
@@ -244,5 +249,13 @@ namespace cpp_kafka{
             }
         }
         throw invalid_argument("Given UUID does not refer to a topic.");
+    }
+
+    bool partition_exists_for_topic(const string& topic_name, const fint& partition_index) {
+        const string file_path = "/tmp/kraft-combined-logs/" + topic_name + "-" + to_string(partition_index) + "/00000000000000000000.log";
+
+        const path p{file_path};
+
+        return exists(p);
     }
 }

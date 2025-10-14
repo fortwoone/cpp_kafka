@@ -5,6 +5,7 @@
 #pragma once
 
 #include <fcntl.h>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <stdexcept>
@@ -19,6 +20,8 @@
 #include "payloads.hpp"
 
 namespace cpp_kafka{
+    using std::filesystem::exists;
+    using std::filesystem::path;
     using std::holds_alternative;
     using std::ifstream;
     using std::invalid_argument;
@@ -120,9 +123,16 @@ namespace cpp_kafka{
     /**
      * Check if the given UUID refers to a topic.
      * @param uuid The UUID to match against a topic.
-     * @return true of it does, false otherwise.
+     * @return true if it does, false otherwise.
      */
     bool topic_exists_as_uuid(const UUID& uuid);
+
+    /**
+     * Check if the given string is a topic name.
+     * @param name The name to check for.
+     * @return true if it is, false otherwise.
+     */
+    bool topic_exists_as_name(const string& name);
 
     /**
      * Fetch the topic's name from an existing UUID.
@@ -131,6 +141,14 @@ namespace cpp_kafka{
      * @throw invalid_argument if the UUID isn't mapped to a topic.
      */
     string get_topic_name_from_uuid(const UUID& uuid);
+
+    /**
+     * Fetch a topic's UUID based on its name.
+     * @param name The topic's name.
+     * @return The corresponding UUID if it exists.
+     * @throw invalid_argument if the given name isn't a topic name.
+     */
+    UUID get_uuid_for_topic(const string& name);
 
     /**
      * Get all the record batches from a topic partition's log file.
@@ -149,4 +167,12 @@ namespace cpp_kafka{
      * @return A vector containing all loaded batches.
      */
     vector<RecordBatch> load_cluster_metadata();
+
+    /**
+     * Check if the given partition index exists for this topic.
+     * @param topic_name The topic's name.
+     * @param partition_index The partition index.
+     * @return true if it does, false otherwise.
+     */
+    bool partition_exists_for_topic(const string& topic_name, const fint& partition_index);
 }

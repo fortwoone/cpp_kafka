@@ -631,19 +631,30 @@ namespace cpp_kafka{
         vector<ProduceTopic> ret_topics;
         ret_topics.resize(tac_as_uint);
 
+        bool topic_exists;
+
         for (uint i = 0; i < tac_as_uint; ++i) {
             auto& ret_topic = ret_topics[i];
             auto& req_topic = requested_topics[i];
+
+            topic_exists = topic_exists_as_name(req_topic.topic_name);
 
             ret_topic.topic_name = req_topic.topic_name;
             ret_topic.partitions.reserve(req_topic.partition_indexes.size());
             for (const auto& part_idx: req_topic.partition_indexes) {
                 auto& created_ret_part = ret_topic.partitions.emplace_back();
                 created_ret_part.partition_index = part_idx;
-                created_ret_part.err_code = KafkaErrorCode::UNKNOWN_TOPIC_OR_PARTITION;
-                created_ret_part.base_offset = -1;
                 created_ret_part.log_append_time = -1;
-                created_ret_part.log_start_offset = -1;
+                if (!topic_exists || !partition_exists_for_topic(ret_topic.topic_name, part_idx)) {
+                    created_ret_part.err_code = KafkaErrorCode::UNKNOWN_TOPIC_OR_PARTITION;
+                    created_ret_part.base_offset = -1;
+                    created_ret_part.log_start_offset = -1;
+                }
+                else {
+                    created_ret_part.err_code = KafkaErrorCode::NO_ERROR;
+                    created_ret_part.base_offset = 0;
+                    created_ret_part.log_start_offset = 0;
+                }
             }
         }
 
