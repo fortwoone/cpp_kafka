@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cstdio>
 #include <fcntl.h>
 #include <filesystem>
 #include <fstream>
@@ -12,6 +14,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -20,13 +23,21 @@
 #include "payloads.hpp"
 
 namespace cpp_kafka{
-    using std::filesystem::exists;
-    using std::filesystem::path;
+    namespace fs = std::filesystem;
+
+    using std::fclose;
+    using std::FILE;
+    using std::fopen;
+    using std::fread;
+    using std::fwrite;
     using std::holds_alternative;
     using std::ifstream;
     using std::invalid_argument;
     using std::istreambuf_iterator;
+    using std::max;
     using std::out_of_range;
+    using std::pair;
+    using std::replace;
     using std::runtime_error;
     using std::string;
     using std::to_string;
@@ -175,4 +186,15 @@ namespace cpp_kafka{
      * @return true if it does, false otherwise.
      */
     bool partition_exists_for_topic(const string& topic_name, const fint& partition_index);
+
+    size_t find_next_offset(const fs::path& log_file);
+
+    /**
+     * Appends the given raw batch data to a log file.
+     * @param topic_name The topic's name.
+     * @param partition_index The partition's index.
+     * @param batch_data The raw batch data.
+     * @throw runtime_error if the log file could not be opened.
+     */
+    pair<flong, flong> append_batch_to_log_file(const string& topic_name, const fint& partition_index, const vector<ubyte>& batch_data);
 }

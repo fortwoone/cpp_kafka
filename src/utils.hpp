@@ -36,6 +36,8 @@ using fint = int32_t;
 using uint = uint32_t;
 using flong = int64_t;
 using ulong = uint64_t;
+using fmax = intmax_t;
+using umax = uintmax_t;
 
 using InternetSockAddr = struct sockaddr_in;
 using SockAddr = struct sockaddr;

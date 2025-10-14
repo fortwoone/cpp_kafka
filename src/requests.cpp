@@ -603,6 +603,7 @@ namespace cpp_kafka{
 
         unsigned_varint_t topic_arr_count = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
         vector<ProduceReqTopic> requested_topics;
+        vector<vector<ubyte>> batches;
         auto tac_as_uint = static_cast<uint>(topic_arr_count);
         requested_topics.reserve(tac_as_uint);
 
@@ -621,6 +622,12 @@ namespace cpp_kafka{
                 created_topic.partition_indexes.push_back(retrieved_partidx);
 
                 auto rec_batch_size = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
+                auto& current_batch = batches.emplace_back();
+                current_batch.insert(
+                    current_batch.end(),
+                    buffer + offset,
+                    buffer + offset + static_cast<uint>(rec_batch_size)
+                );
                 offset += static_cast<uint>(rec_batch_size);  // Ignore record batches for now
                 auto part_tagged_fields = unsigned_varint_t::decode_and_advance(buffer, offset);    // Ignore for now
             }
@@ -651,9 +658,10 @@ namespace cpp_kafka{
                     created_ret_part.log_start_offset = -1;
                 }
                 else {
+                    auto new_offsets = append_batch_to_log_file(req_topic.topic_name, part_idx, batches[i]);
                     created_ret_part.err_code = KafkaErrorCode::NO_ERROR;
-                    created_ret_part.base_offset = 0;
-                    created_ret_part.log_start_offset = 0;
+                    created_ret_part.base_offset = new_offsets.first;
+                    created_ret_part.log_start_offset = new_offsets.second;
                 }
             }
         }

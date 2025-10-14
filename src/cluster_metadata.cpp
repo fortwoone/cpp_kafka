@@ -254,8 +254,70 @@ namespace cpp_kafka{
     bool partition_exists_for_topic(const string& topic_name, const fint& partition_index) {
         const string file_path = "/tmp/kraft-combined-logs/" + topic_name + "-" + to_string(partition_index) + "/00000000000000000000.log";
 
-        const path p{file_path};
+        const fs::path p{file_path};
 
-        return exists(p);
+        return fs::exists(p);
+    }
+
+    size_t find_next_offset(const fs::path& log_file) {
+        FILE* log = fopen(log_file.c_str(), O_RDONLY);
+        if (log == nullptr) {
+            return 0;
+        }
+
+        umax lf_size = fs::file_size(log_file);
+        char* buf = new char[lf_size];
+        ssize_t read_bytes = fread(buf, 1, lf_size, log);
+
+        ssize_t offset_in_file = 0;
+        ssize_t max_offset = -1;
+        flong base_offset;
+        fint batch_length, last_offset_delta, after_last_offset;
+
+        while (offset_in_file < lf_size) {
+            // Ignore batch data, save for offset 20 which is the last offset delta.
+            base_offset = read_be_and_advance<flong>(buf, offset_in_file);
+            batch_length = read_be_and_advance<fint>(buf, offset_in_file);
+            after_last_offset = batch_length - 24; // offset 20 for last offset delta + 4 bytes
+
+            offset_in_file += 20;
+            last_offset_delta = read_be_and_advance<fint>(buf, offset_in_file);
+
+            max_offset = max(max_offset, base_offset + last_offset_delta);
+
+            // Next batch
+            offset_in_file += after_last_offset;
+        }
+
+        delete[] buf;
+        fclose(log);
+
+        return max_offset >= 0 ? static_cast<size_t>(max_offset) : 0;
+    }
+
+    pair<flong, flong> append_batch_to_log_file(const string& topic_name, const fint& partition_index, const vector<ubyte>& batch_data) {
+        const fs::path file_path{"/tmp/kraft-combined-logs/" + topic_name + "-" + to_string(partition_index) + "/00000000000000000000.log"};
+
+        size_t next_offset = find_next_offset(file_path);
+
+        FILE* log = fopen(file_path.c_str(), "a");
+        if (log == nullptr) {
+            throw runtime_error("Could not write new batch data into file.");
+        }
+
+        // Replace the original offset with the new one for the log file..
+        fint bo_as_fint = next_offset;
+        if constexpr (std::endian::native == std::endian::little) {
+            bo_as_fint = byteswap(bo_as_fint);
+        }
+
+        auto new_bdata = batch_data;
+
+        memcpy(new_bdata.data(), &bo_as_fint, 4);
+
+        fwrite(new_bdata.data(), sizeof(ubyte), new_bdata.size(), log);
+        fclose(log);
+
+        return {next_offset, 0};
     }
 }
