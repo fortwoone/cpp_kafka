@@ -305,11 +305,13 @@ namespace cpp_kafka{
             throw runtime_error("Could not write new batch data into file.");
         }
 
-        // Replace the original offset with the new one for the log file..
+        // Replace the original offset with the new one for the log file.
+        cerr << "Next offset (in hex): " << std::hex << next_offset << "\n";
         flong bo_as_flong = next_offset;
         if constexpr (std::endian::native == std::endian::little) {
             bo_as_flong = byteswap(bo_as_flong);
         }
+        cerr << "Byteswapped offset: " << bo_as_flong << std::dec << "\n";
 
         auto new_bdata = batch_data;
 

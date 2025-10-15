@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iterator>
 #include <stdexcept>
 #include <string>
