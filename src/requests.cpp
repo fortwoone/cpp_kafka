@@ -112,12 +112,9 @@ namespace cpp_kafka{
     }
 
     void FetchResponsePortion::append_to_response(Response& response) const{
-        cerr << "Topic UUID: ";
         for (const auto& p: topic_uuid){
-            cerr << std::hex << static_cast<uint>(p) << " ";
             response.append(static_cast<ubyte>(p));
         }
-        cerr << std::dec << "\n";
         unsigned_varint_t part_count = static_cast<uint>(partitions.size() + 1);
         for (const ubyte& len_portion: part_count.encode()){
             response.append(len_portion);
@@ -430,7 +427,6 @@ namespace cpp_kafka{
             response.append(host_to_network_short(to_underlying(KafkaErrorCode::UNSUPPORTED_VERSION))); // Error code
         }
         else{
-            cerr << "Retrieving data\n";
             vector<Topic> topic_entries = retrieve_data(requested_topics);
 
             response.append(static_cast<fint>(0));                              // Throttle time
@@ -623,7 +619,6 @@ namespace cpp_kafka{
 
                 auto rec_batch_size = unsigned_varint_t::decode_and_advance(buffer, offset) - 1;
                 auto& current_batch = batches.emplace_back();
-                cerr << "Reading batch data\n";
                 current_batch.insert(
                     current_batch.end(),
                     reinterpret_cast<ubyte*>(buffer + offset),
@@ -631,7 +626,6 @@ namespace cpp_kafka{
                         buffer + offset + static_cast<uint>(rec_batch_size)
                     )
                 );
-                cerr << "Read batch data\n";
                 offset += static_cast<uint>(rec_batch_size);
                 auto part_tagged_fields = unsigned_varint_t::decode_and_advance(buffer, offset);    // Ignore for now
             }
