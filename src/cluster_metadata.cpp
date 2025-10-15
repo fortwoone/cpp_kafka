@@ -306,14 +306,14 @@ namespace cpp_kafka{
         }
 
         // Replace the original offset with the new one for the log file..
-        fint bo_as_fint = next_offset;
+        flong bo_as_flong = next_offset;
         if constexpr (std::endian::native == std::endian::little) {
-            bo_as_fint = byteswap(bo_as_fint);
+            bo_as_flong = byteswap(bo_as_flong);
         }
 
         auto new_bdata = batch_data;
 
-        memcpy(new_bdata.data(), &bo_as_fint, 4);
+        memcpy(new_bdata.data(), &bo_as_flong, sizeof(flong));
 
         fwrite(new_bdata.data(), sizeof(ubyte), new_bdata.size(), log);
         fclose(log);
