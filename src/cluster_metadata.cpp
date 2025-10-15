@@ -262,6 +262,7 @@ namespace cpp_kafka{
     size_t find_next_offset(const fs::path& log_file) {
         FILE* log = fopen(log_file.c_str(), O_RDONLY);
         if (log == nullptr) {
+            cerr << "File didn't exist previously\n";
             return 0;
         }
         cerr << "Opened log file in read only mode\n";
