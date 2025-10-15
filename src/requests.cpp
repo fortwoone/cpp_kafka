@@ -652,7 +652,8 @@ namespace cpp_kafka{
 
             ret_topic.topic_name = req_topic.topic_name;
             ret_topic.partitions.reserve(req_topic.partition_indexes.size());
-            for (const auto& part_idx: req_topic.partition_indexes) {
+            for (uint j = 0; j < req_topic.partition_indexes.size(); ++j) {
+                const auto& part_idx = req_topic.partition_indexes[j];
                 auto& created_ret_part = ret_topic.partitions.emplace_back();
                 created_ret_part.partition_index = part_idx;
                 created_ret_part.log_append_time = -1;
@@ -662,7 +663,7 @@ namespace cpp_kafka{
                     created_ret_part.log_start_offset = -1;
                 }
                 else {
-                    auto new_offsets = append_batch_to_log_file(req_topic.topic_name, part_idx, batches[i]);
+                    auto new_offsets = append_batch_to_log_file(req_topic.topic_name, part_idx, batches[j]);
                     created_ret_part.err_code = KafkaErrorCode::NO_ERROR;
                     created_ret_part.base_offset = new_offsets.first;
                     created_ret_part.log_start_offset = new_offsets.second;
