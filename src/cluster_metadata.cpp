@@ -260,14 +260,10 @@ namespace cpp_kafka{
     }
 
     size_t find_next_offset(const fs::path& log_file) {
-        cerr << "Path: " << log_file.string() << "\n";
-        cerr << "Path's C string: " << string(log_file.c_str()) << "\n";
         FILE* log = fopen(log_file.c_str(), "r");
         if (log == nullptr) {
-            cerr << "File didn't exist previously\n";
             return 0;
         }
-        cerr << "Opened log file in read only mode\n";
 
         umax lf_size = fs::file_size(log_file);
         char* buf = new char[lf_size];
@@ -302,7 +298,6 @@ namespace cpp_kafka{
     pair<flong, flong> append_batch_to_log_file(const string& topic_name, const fint& partition_index, const vector<ubyte>& batch_data) {
         const fs::path file_path{"/tmp/kraft-combined-logs/" + topic_name + "-" + to_string(partition_index) + "/00000000000000000000.log"};
 
-        cerr << "Finding next offset in path...\n";
         size_t next_offset = find_next_offset(file_path);
 
         FILE* log = fopen(file_path.c_str(), "a");
